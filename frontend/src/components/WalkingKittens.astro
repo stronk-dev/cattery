@@ -52,8 +52,8 @@
     return Math.random() * (max - min) + min;
   }
 
-  function spawnKitten() {
-    if (reducedMotion || activeKittens >= MAX_KITTENS) return;
+  function spawnKitten(force = false) {
+    if (reducedMotion || (!force && activeKittens >= MAX_KITTENS)) return;
 
     const clone = template.content.cloneNode(true) as DocumentFragment;
     const kitten = clone.querySelector('.kitten') as HTMLElement;
@@ -129,6 +129,9 @@
       scheduleNext();
     }, delay);
   }
+
+  // Listen for spawn requests from the header cat face (bypass max limit)
+  document.addEventListener('spawn-kitten', () => spawnKitten(true));
 
   if (!reducedMotion) {
     setTimeout(spawnKitten, 3000);

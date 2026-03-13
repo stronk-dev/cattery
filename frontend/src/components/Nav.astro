@@ -96,10 +96,10 @@ function isActive(href: string): boolean {
       </li>
     </ul>
 
-    <!-- CatFace on the right (wide + medium) -->
-    <div class="nav-catface">
+    <!-- CatFace on the right (wide + medium) — click to spawn a kitten -->
+    <button class="nav-catface" id="catface-btn" type="button" aria-label="Spawn een kitten">
       <CatFace />
-    </div>
+    </button>
 
     <!-- Mobile hamburger -->
     <details class="nav-mobile">
@@ -130,6 +130,11 @@ function isActive(href: string): boolean {
         el.removeAttribute('open');
       }
     });
+  });
+
+  // Click cat face to spawn a walking kitten
+  document.getElementById('catface-btn')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('spawn-kitten'));
   });
 
   // Close mobile menu via X button or backdrop tap
@@ -252,6 +257,19 @@ function isActive(href: string): boolean {
   .nav-catface {
     flex-shrink: 0;
     margin-left: var(--space-sm);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  .nav-catface:hover {
+    transform: scale(1.1);
+  }
+
+  .nav-catface:active {
+    transform: scale(0.95);
   }
 
   /* ── Cat links visibility (wide vs medium) ─────────────── */
