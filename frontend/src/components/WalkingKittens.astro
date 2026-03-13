@@ -52,6 +52,114 @@
     return Math.random() * (max - min) + min;
   }
 
+  /* ── Physics state ──────────────────────────────────────── */
+
+  interface KittenState {
+    el: HTMLElement;
+    x: number;
+    y: number;
+    vx: number;        // avoidance / impulse velocity
+    vy: number;
+    baseVx: number;    // constant walking speed (px / frame @ 60fps)
+    baseY: number;     // Y to gently spring back to
+    origMood: string;
+    normalWalkSpeed: number;
+  }
+
+  const kittens: KittenState[] = [];
+  let mouseX = -9999;
+  let mouseY = -9999;
+
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.pageX;
+    mouseY = e.pageY;
+  });
+
+  // Physics constants
+  const AVOID_RADIUS = 140;
+  const AVOID_STRENGTH = 4.5;
+  const DRAG = 0.92;
+  const Y_SPRING = 0.018;
+
+  /* ── Game loop ──────────────────────────────────────────── */
+
+  function tick() {
+    for (let i = kittens.length - 1; i >= 0; i--) {
+      const k = kittens[i];
+
+      // Cursor repulsion force
+      const dx = k.x - mouseX;
+      const dy = k.y - mouseY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < AVOID_RADIUS && dist > 1) {
+        const strength = ((AVOID_RADIUS - dist) / AVOID_RADIUS) * AVOID_STRENGTH;
+        let fx = (dx / dist) * strength;
+        let fy = (dy / dist) * strength;
+
+        // Bias horizontal — kittens dodge sideways / diagonal, not straight up/down
+        fy *= 0.35;
+        if (Math.abs(fx) < 0.5) fx = Math.sign(fx || k.baseVx) * 0.5;
+
+        k.vx += fx;
+        k.vy += fy;
+      }
+
+      // Drag on impulse velocity
+      k.vx *= DRAG;
+      k.vy *= DRAG;
+
+      // Gentle spring back to base Y
+      k.vy += (k.baseY - k.y) * Y_SPRING;
+
+      // Integrate position
+      const totalVx = k.baseVx + k.vx;
+      k.x += totalVx;
+      k.y += k.vy;
+
+      // Soft Y bounds
+      const minY = 80;
+      const maxY = Math.max(document.documentElement.scrollHeight - 80, minY + 200);
+      if (k.y < minY) { k.y = minY; k.vy = Math.abs(k.vy) * 0.3; }
+      if (k.y > maxY) { k.y = maxY; k.vy = -Math.abs(k.vy) * 0.3; }
+
+      // Flip sprite based on movement direction (can turn around!)
+      const flip = totalVx >= 0 ? '' : 'scaleX(-1)';
+
+      // Walk animation speed scales with actual speed
+      const totalSpeed = Math.hypot(totalVx, k.vy);
+      const normalSpeed = Math.abs(k.baseVx);
+      const speedRatio = totalSpeed / (normalSpeed || 1);
+      const walkAnim = Math.max(0.06, k.normalWalkSpeed / Math.max(speedRatio, 0.5));
+      k.el.style.setProperty('--kitten-walk-speed', `${walkAnim}s`);
+
+      // Panicked tail when moving fast
+      if (speedRatio > 3 && k.el.dataset.tail !== 'playful') {
+        k.el.dataset.tail = 'playful';
+      } else if (speedRatio <= 1.5 && k.el.dataset.tail === 'playful' && k.origMood !== 'playful') {
+        k.el.dataset.tail = k.origMood;
+      }
+
+      // Apply transform
+      k.el.style.transform = `translate(${k.x}px, ${k.y}px) ${flip}`;
+
+      // Remove when offscreen
+      if (k.x < -250 || k.x > window.innerWidth + 250) {
+        k.el.remove();
+        kittens.splice(i, 1);
+        activeKittens--;
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  if (!reducedMotion) {
+    requestAnimationFrame(tick);
+  }
+
+  /* ── Spawn ──────────────────────────────────────────────── */
+
   function spawnKitten(force = false) {
     if (reducedMotion || (!force && activeKittens >= MAX_KITTENS)) return;
 
@@ -64,61 +172,54 @@
     kitten.style.setProperty('--kitten-fur-dark', palette.furDark);
     kitten.style.setProperty('--kitten-eye', palette.eye);
 
-    // Random size (50-90px base)
+    // Random size
     const size = randomBetween(50, 90);
     kitten.style.setProperty('--kitten-size', `${size}px`);
 
-    // Tail mood — each cat gets its own personality
+    // Tail mood
     const mood = TAIL_MOODS[Math.floor(Math.random() * TAIL_MOODS.length)];
     kitten.dataset.tail = mood;
 
-    // Position: spawn near current scroll position (lower portion of visible area)
-    const yPos = window.scrollY + randomBetween(window.innerHeight * 0.4, window.innerHeight * 0.85);
-    kitten.style.top = `${yPos}px`;
-
-    // Random direction & speed — wide range from lazy stroll to quick trot
+    // Starting position & direction
     const goRight = Math.random() > 0.5;
-    const duration = randomBetween(6, 25);
-    const flip = goRight ? '' : 'scaleX(-1)';
-    const vw = window.innerWidth;
-    const startX = goRight ? -150 : vw + 150;
-    const endX = goRight ? vw + 150 : -150;
+    const startX = goRight ? -150 : window.innerWidth + 150;
+    const yPos = window.scrollY + randomBetween(window.innerHeight * 0.4, window.innerHeight * 0.85);
 
-    // Scale walk animation speed to match travel speed
-    const walkSpeed = Math.max(0.2, 0.35 * (12 / duration));
-    kitten.style.setProperty('--kitten-walk-speed', `${walkSpeed}s`);
+    // Base speed: px per frame at 60fps
+    const speed = randomBetween(1.5, 4.5);
+    const baseVx = goRight ? speed : -speed;
 
-    // Wandering path: 6-10 random waypoints for organic movement
-    const numPoints = Math.floor(randomBetween(6, 10));
-    const wobbleIntensity = randomBetween(30, 100);
-    const keyframes: Keyframe[] = [];
+    // Walk animation speed matched to base speed
+    const normalWalkSpeed = Math.max(0.15, 0.35 * (3 / speed));
+    kitten.style.setProperty('--kitten-walk-speed', `${normalWalkSpeed}s`);
 
-    for (let i = 0; i <= numPoints; i++) {
-      const progress = i / numPoints;
-      const x = startX + (endX - startX) * progress;
-      // Wobble fades in/out at edges so kittens enter/exit cleanly
-      const edgeFade = Math.sin(progress * Math.PI);
-      const y = i === 0 || i === numPoints
-        ? 0
-        : randomBetween(-wobbleIntensity, wobbleIntensity) * edgeFade;
-      keyframes.push({
-        transform: `translateX(${x}px) translateY(${y}px) ${flip}`,
-      });
-    }
+    // Clickable (stage is pointer-events:none, kittens opt in)
+    kitten.style.pointerEvents = 'auto';
+    kitten.style.cursor = 'pointer';
 
-    activeKittens++;
-    stage.appendChild(kitten);
+    const state: KittenState = {
+      el: kitten,
+      x: startX,
+      y: yPos,
+      vx: 0,
+      vy: 0,
+      baseVx,
+      baseY: yPos,
+      origMood: mood,
+      normalWalkSpeed,
+    };
 
-    const anim = kitten.animate(keyframes, {
-      duration: duration * 1000,
-      easing: 'ease-in-out',
-      fill: 'forwards',
+    // Click → big impulse away from cursor
+    kitten.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const impulseDirX = state.x - e.pageX;
+      state.vx += Math.sign(impulseDirX || 1) * 28;
+      state.vy -= 6;
     });
 
-    anim.onfinish = () => {
-      kitten.remove();
-      activeKittens--;
-    };
+    activeKittens++;
+    kittens.push(state);
+    stage.appendChild(kitten);
   }
 
   // Spawn loop: every 10-20 seconds
@@ -161,6 +262,7 @@
 
   .kitten {
     position: absolute;
+    top: 0;
     left: 0;
     width: var(--kitten-size, 70px);
     height: var(--kitten-size, 70px);
