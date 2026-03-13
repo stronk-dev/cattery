@@ -1,0 +1,525 @@
+---
+---
+
+<div class="kittens-stage" id="kittens-stage">
+  <template id="kitten-template">
+    <div class="kitten" aria-hidden="true">
+      <div class="kitten-body">
+        <div class="kitten-head">
+          <div class="kitten-ear kitten-ear--far"></div>
+          <div class="kitten-ear kitten-ear--near"></div>
+          <div class="kitten-eye"></div>
+          <div class="kitten-nose"></div>
+        </div>
+        <div class="kitten-tail">
+          <div class="kitten-tail-mid">
+            <div class="kitten-tail-tip"></div>
+          </div>
+        </div>
+        <div class="kitten-leg kitten-leg--fl"></div>
+        <div class="kitten-leg kitten-leg--fr"></div>
+        <div class="kitten-leg kitten-leg--bl"></div>
+        <div class="kitten-leg kitten-leg--br"></div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+  const stage = document.getElementById('kittens-stage')!;
+  const template = document.getElementById('kitten-template') as HTMLTemplateElement;
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
+    stage.style.display = 'none';
+  }
+
+  const FUR_PALETTE = [
+    { fur: '#e8943a', furDark: '#c67520', eye: '#4a8c3f' },  // orange tabby
+    { fur: '#3a3a3a', furDark: '#1a1a1a', eye: '#d4a017' },  // black
+    { fur: '#9e9e9e', furDark: '#6e6e6e', eye: '#5c8a4d' },  // grey
+    { fur: '#f5e6d0', furDark: '#d4c0a0', eye: '#5b88c9' },  // cream
+    { fur: '#8b6347', furDark: '#6d4c35', eye: '#4a8c3f' },  // brown
+    { fur: '#d4a574', furDark: '#b8864e', eye: '#7a6b5d' },  // light brown
+  ];
+
+  const TAIL_MOODS = ['playful', 'curious', 'content', 'sassy'] as const;
+
+  const MAX_KITTENS = 3;
+  let activeKittens = 0;
+
+  function randomBetween(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function spawnKitten() {
+    if (reducedMotion || activeKittens >= MAX_KITTENS) return;
+
+    const clone = template.content.cloneNode(true) as DocumentFragment;
+    const kitten = clone.querySelector('.kitten') as HTMLElement;
+
+    // Random color
+    const palette = FUR_PALETTE[Math.floor(Math.random() * FUR_PALETTE.length)];
+    kitten.style.setProperty('--kitten-fur', palette.fur);
+    kitten.style.setProperty('--kitten-fur-dark', palette.furDark);
+    kitten.style.setProperty('--kitten-eye', palette.eye);
+
+    // Random size (50-90px base)
+    const size = randomBetween(50, 90);
+    kitten.style.setProperty('--kitten-size', `${size}px`);
+
+    // Tail mood — each cat gets its own personality
+    const mood = TAIL_MOODS[Math.floor(Math.random() * TAIL_MOODS.length)];
+    kitten.dataset.tail = mood;
+
+    // Position: spawn near current scroll position (lower portion of visible area)
+    const yPos = window.scrollY + randomBetween(window.innerHeight * 0.4, window.innerHeight * 0.85);
+    kitten.style.top = `${yPos}px`;
+
+    // Random direction & speed — wide range from lazy stroll to quick trot
+    const goRight = Math.random() > 0.5;
+    const duration = randomBetween(6, 25);
+    const flip = goRight ? '' : 'scaleX(-1)';
+    const vw = window.innerWidth;
+    const startX = goRight ? -150 : vw + 150;
+    const endX = goRight ? vw + 150 : -150;
+
+    // Scale walk animation speed to match travel speed
+    const walkSpeed = Math.max(0.2, 0.35 * (12 / duration));
+    kitten.style.setProperty('--kitten-walk-speed', `${walkSpeed}s`);
+
+    // Wandering path: 6-10 random waypoints for organic movement
+    const numPoints = Math.floor(randomBetween(6, 10));
+    const wobbleIntensity = randomBetween(30, 100);
+    const keyframes: Keyframe[] = [];
+
+    for (let i = 0; i <= numPoints; i++) {
+      const progress = i / numPoints;
+      const x = startX + (endX - startX) * progress;
+      // Wobble fades in/out at edges so kittens enter/exit cleanly
+      const edgeFade = Math.sin(progress * Math.PI);
+      const y = i === 0 || i === numPoints
+        ? 0
+        : randomBetween(-wobbleIntensity, wobbleIntensity) * edgeFade;
+      keyframes.push({
+        transform: `translateX(${x}px) translateY(${y}px) ${flip}`,
+      });
+    }
+
+    activeKittens++;
+    stage.appendChild(kitten);
+
+    const anim = kitten.animate(keyframes, {
+      duration: duration * 1000,
+      easing: 'ease-in-out',
+      fill: 'forwards',
+    });
+
+    anim.onfinish = () => {
+      kitten.remove();
+      activeKittens--;
+    };
+  }
+
+  // Spawn loop: every 10-20 seconds
+  function scheduleNext() {
+    const delay = randomBetween(10000, 20000);
+    setTimeout(() => {
+      spawnKitten();
+      scheduleNext();
+    }, delay);
+  }
+
+  if (!reducedMotion) {
+    setTimeout(spawnKitten, 3000);
+    scheduleNext();
+  }
+</script>
+
+<style is:global>
+  /* Stage sits behind page content, scrolls with the page */
+  body {
+    position: relative;
+  }
+
+  body > main,
+  body > nav,
+  body > footer {
+    position: relative;
+    z-index: 1;
+  }
+
+  .kittens-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  /* ── Kitten root ──────────────────────────────────────── */
+
+  .kitten {
+    position: absolute;
+    left: 0;
+    width: var(--kitten-size, 70px);
+    height: var(--kitten-size, 70px);
+  }
+
+  /* ── Body ──────────────────────────────────────────────── */
+
+  .kitten-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    animation: kitten-bob var(--kitten-walk-speed, 0.35s) ease-in-out infinite alternate;
+  }
+
+  /* Torso */
+  .kitten-body::before {
+    content: '';
+    position: absolute;
+    top: 32%;
+    left: 14%;
+    width: 56%;
+    height: 30%;
+    background: var(--kitten-fur, #e8943a);
+    border-radius: 45% 52% 50% 42% / 60% 55% 45% 55%;
+  }
+
+  /* Chest/shoulder */
+  .kitten-body::after {
+    content: '';
+    position: absolute;
+    top: 28%;
+    left: 50%;
+    width: 18%;
+    height: 30%;
+    background: var(--kitten-fur, #e8943a);
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  /* ── Head — round circle, cartoon style like CatFace ──── */
+
+  .kitten-head {
+    position: absolute;
+    top: 8%;
+    left: 52%;
+    width: 34%;
+    height: 34%;
+    background: var(--kitten-fur, #e8943a);
+    border-radius: 50%;
+    z-index: 2;
+  }
+
+  /* ── Ears — same style as CatFace ─────────────────────── */
+
+  .kitten-ear {
+    position: absolute;
+  }
+
+  /* Near ear — prominent, same shape as CatFace */
+  .kitten-ear--near {
+    top: -22%;
+    left: 8%;
+    width: 30%;
+    height: 50%;
+    background: var(--kitten-fur-dark, #c67520);
+    border-radius: 60% 40% 0 0 / 100% 100% 0 0;
+    transform: rotate(-8deg);
+    z-index: 1;
+  }
+
+  /* Inner ear pink */
+  .kitten-ear--near::before {
+    content: '';
+    position: absolute;
+    top: 18%;
+    left: 22%;
+    width: 56%;
+    height: 52%;
+    background: #d4878f;
+    border-radius: 60% 40% 0 0 / 100% 100% 0 0;
+    opacity: 0.45;
+  }
+
+  /* Far ear — peeking just behind the near ear */
+  .kitten-ear--far {
+    top: -18%;
+    left: 28%;
+    width: 22%;
+    height: 38%;
+    background: var(--kitten-fur-dark, #c67520);
+    border-radius: 40% 60% 0 0 / 100% 100% 0 0;
+    transform: rotate(8deg);
+    opacity: 0.6;
+  }
+
+  /* ── Eye — big and cartoony, one visible (side view) ──── */
+
+  .kitten-eye {
+    position: absolute;
+    top: 26%;
+    right: 10%;
+    width: 32%;
+    height: 28%;
+    background: var(--kitten-eye, #4a8c3f);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: kitten-blink 4s infinite ease-in;
+    z-index: 1;
+  }
+
+  /* Slit pupil */
+  .kitten-eye::after {
+    content: '';
+    position: absolute;
+    top: 18%;
+    left: 35%;
+    width: 22%;
+    height: 56%;
+    background: #111;
+    border-radius: 50%;
+  }
+
+  /* White highlight glint */
+  .kitten-eye::before {
+    content: '';
+    position: absolute;
+    top: 15%;
+    right: 15%;
+    width: 20%;
+    height: 20%;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  /* ── Nose — tiny pink dot at the face edge ────────────── */
+
+  .kitten-nose {
+    position: absolute;
+    top: 55%;
+    right: -2%;
+    width: 12%;
+    height: 10%;
+    background: #d4878f;
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  /* ── Tail (3-segment chain, attached at rear spine) ────── */
+
+  .kitten-tail {
+    position: absolute;
+    top: 14%;
+    left: 14%;
+    width: 8%;
+    height: 22%;
+    background: var(--kitten-fur-dark, #c67520);
+    border-radius: 50px;
+    transform-origin: bottom center;
+  }
+
+  .kitten-tail-mid {
+    position: absolute;
+    top: -58%;
+    left: 5%;
+    width: 85%;
+    height: 68%;
+    background: var(--kitten-fur-dark, #c67520);
+    border-radius: 50px;
+    transform-origin: bottom center;
+  }
+
+  .kitten-tail-tip {
+    position: absolute;
+    top: -48%;
+    left: 10%;
+    width: 72%;
+    height: 58%;
+    background: var(--kitten-fur-dark, #c67520);
+    border-radius: 50px;
+    transform-origin: bottom center;
+  }
+
+  /* ── Tail moods ────────────────────────────────────────── */
+
+  /* Playful — tail high, quick bouncy whip */
+  .kitten[data-tail="playful"] .kitten-tail {
+    animation: tail-playful-base 0.5s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="playful"] .kitten-tail-mid {
+    animation: tail-playful-mid 0.5s 0.06s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="playful"] .kitten-tail-tip {
+    animation: tail-playful-tip 0.5s 0.12s ease-in-out infinite alternate;
+  }
+
+  /* Curious — mid-height, slow deliberate S-curve */
+  .kitten[data-tail="curious"] .kitten-tail {
+    animation: tail-curious-base 1.2s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="curious"] .kitten-tail-mid {
+    animation: tail-curious-mid 1.2s 0.1s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="curious"] .kitten-tail-tip {
+    animation: tail-curious-tip 1.2s 0.2s ease-in-out infinite alternate;
+  }
+
+  /* Content — relaxed gentle sway */
+  .kitten[data-tail="content"] .kitten-tail {
+    animation: tail-content-base 0.8s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="content"] .kitten-tail-mid {
+    animation: tail-content-mid 0.8s 0.08s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="content"] .kitten-tail-tip {
+    animation: tail-content-tip 0.8s 0.16s ease-in-out infinite alternate;
+  }
+
+  /* Sassy — high confident tail with forward flair */
+  .kitten[data-tail="sassy"] .kitten-tail {
+    animation: tail-sassy-base 0.6s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="sassy"] .kitten-tail-mid {
+    animation: tail-sassy-mid 0.6s 0.07s ease-in-out infinite alternate;
+  }
+  .kitten[data-tail="sassy"] .kitten-tail-tip {
+    animation: tail-sassy-tip 0.6s 0.14s ease-in-out infinite alternate;
+  }
+
+  /* ── Legs ──────────────────────────────────────────────── */
+
+  .kitten-leg {
+    position: absolute;
+    bottom: 6%;
+    width: 7%;
+    height: 30%;
+    background: var(--kitten-fur-dark, #c67520);
+    border-radius: 3px 3px 4px 4px;
+    transform-origin: top center;
+  }
+
+  /* Paw */
+  .kitten-leg::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -12%;
+    width: 124%;
+    height: 16%;
+    background: var(--kitten-fur, #e8943a);
+    border-radius: 50%;
+  }
+
+  .kitten-leg--fl {
+    left: 56%;
+    animation: kitten-step-a var(--kitten-walk-speed, 0.35s) ease-in-out infinite alternate;
+  }
+
+  .kitten-leg--fr {
+    left: 62%;
+    animation: kitten-step-b var(--kitten-walk-speed, 0.35s) ease-in-out infinite alternate;
+    z-index: -1;
+    opacity: 0.7;
+  }
+
+  .kitten-leg--bl {
+    left: 22%;
+    animation: kitten-step-b var(--kitten-walk-speed, 0.35s) ease-in-out infinite alternate;
+  }
+
+  .kitten-leg--br {
+    left: 28%;
+    animation: kitten-step-a var(--kitten-walk-speed, 0.35s) ease-in-out infinite alternate;
+    z-index: -1;
+    opacity: 0.7;
+  }
+
+  /* ── Keyframes: walk cycle ─────────────────────────────── */
+
+  @keyframes kitten-step-a {
+    0%   { transform: rotate(20deg); }
+    100% { transform: rotate(-20deg); }
+  }
+
+  @keyframes kitten-step-b {
+    0%   { transform: rotate(-20deg); }
+    100% { transform: rotate(20deg); }
+  }
+
+  @keyframes kitten-bob {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-2px); }
+  }
+
+  @keyframes kitten-blink {
+    0%   { transform: scaleY(1); }
+    90%  { transform: scaleY(1); }
+    93%  { transform: scaleY(0.1); }
+    96%  { transform: scaleY(1); }
+    100% { transform: scaleY(1); }
+  }
+
+  /* ── Keyframes: tail moods ─────────────────────────────── */
+
+  /* Playful — high, bouncy, whippy tip */
+  @keyframes tail-playful-base {
+    0%   { transform: rotate(-8deg); }
+    100% { transform: rotate(12deg); }
+  }
+  @keyframes tail-playful-mid {
+    0%   { transform: rotate(-15deg); }
+    100% { transform: rotate(18deg); }
+  }
+  @keyframes tail-playful-tip {
+    0%   { transform: rotate(-30deg); }
+    100% { transform: rotate(25deg); }
+  }
+
+  /* Curious — angled back, slow S-wave, "question mark" */
+  @keyframes tail-curious-base {
+    0%   { transform: rotate(-30deg); }
+    100% { transform: rotate(-18deg); }
+  }
+  @keyframes tail-curious-mid {
+    0%   { transform: rotate(5deg); }
+    100% { transform: rotate(18deg); }
+  }
+  @keyframes tail-curious-tip {
+    0%   { transform: rotate(-5deg); }
+    100% { transform: rotate(15deg); }
+  }
+
+  /* Content — gentle, lazy sway */
+  @keyframes tail-content-base {
+    0%   { transform: rotate(-12deg); }
+    100% { transform: rotate(5deg); }
+  }
+  @keyframes tail-content-mid {
+    0%   { transform: rotate(-8deg); }
+    100% { transform: rotate(10deg); }
+  }
+  @keyframes tail-content-tip {
+    0%   { transform: rotate(-15deg); }
+    100% { transform: rotate(12deg); }
+  }
+
+  /* Sassy — high and confident, forward curve */
+  @keyframes tail-sassy-base {
+    0%   { transform: rotate(-3deg); }
+    100% { transform: rotate(8deg); }
+  }
+  @keyframes tail-sassy-mid {
+    0%   { transform: rotate(12deg); }
+    100% { transform: rotate(25deg); }
+  }
+  @keyframes tail-sassy-tip {
+    0%   { transform: rotate(-12deg); }
+    100% { transform: rotate(8deg); }
+  }
+</style>

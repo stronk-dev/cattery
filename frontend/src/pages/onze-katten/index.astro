@@ -1,0 +1,95 @@
+---
+import Base from '../../layouts/Base.astro';
+import CatCard from '../../components/CatCard.astro';
+import { fetchAlleKatten, fetchSiteInstellingen } from '../../lib/directus';
+
+let site, katten;
+try {
+  [site, katten] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchAlleKatten(),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  katten = [];
+}
+
+const fokpoezen = katten.filter(k => k.rol === 'fokpoes' && k.status === 'actief');
+const dekkaters = katten.filter(k => k.rol === 'dekkater' && k.status === 'actief');
+const gepensioneerd = katten.filter(k => k.status === 'gepensioneerd');
+---
+
+<Base title="Onze Katten" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>Onze Katten</h1>
+        <p class="page-intro">
+          Maak kennis met onze fokkatten. Al onze katten zijn getest op erfelijke aandoeningen en geselecteerd op gezondheid, karakter en rasstandaard.
+        </p>
+      </div>
+
+      {fokpoezen.length > 0 && (
+        <div class="cat-group">
+          <h2 class="section-title">Fokpoezen</h2>
+          <div class="grid grid-3">
+            {fokpoezen.map(kat => <CatCard kat={kat} />)}
+          </div>
+        </div>
+      )}
+
+      {dekkaters.length > 0 && (
+        <div class="cat-group">
+          <h2 class="section-title">Dekkaters</h2>
+          <div class="grid grid-3">
+            {dekkaters.map(kat => <CatCard kat={kat} />)}
+          </div>
+        </div>
+      )}
+
+      {gepensioneerd.length > 0 && (
+        <div class="cat-group">
+          <h2 class="section-title">Gepensioneerd</h2>
+          <div class="grid grid-3">
+            {gepensioneerd.map(kat => <CatCard kat={kat} />)}
+          </div>
+        </div>
+      )}
+
+      {katten.length === 0 && (
+        <p class="empty-state">
+          Er zijn nog geen katten toegevoegd. Voeg katten toe via het admin paneel.
+        </p>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .cat-group {
+    margin-top: var(--space-xl);
+  }
+
+  .empty-state {
+    color: var(--color-text-muted);
+    margin-top: var(--space-lg);
+    text-align: center;
+  }
+</style>

@@ -1,0 +1,127 @@
+---
+interface Props {
+  title: string;
+  subtitle?: string;
+  backgroundImage?: string;
+  fullHeight?: boolean;
+}
+
+const { title, subtitle, backgroundImage, fullHeight = false } = Astro.props;
+
+const heroClass = [
+  'hero',
+  backgroundImage ? 'hero--image' : 'hero--plain',
+  fullHeight ? 'hero--full' : '',
+].filter(Boolean).join(' ');
+---
+
+<section
+  class={heroClass}
+  style={backgroundImage ? `background-image: url(${backgroundImage})` : undefined}
+>
+  <div class="hero-overlay">
+    <div class="container hero-content">
+      <h1 class="hero-title">{title}</h1>
+      {subtitle && <p class="hero-subtitle">{subtitle}</p>}
+      <div class="hero-actions">
+        <slot />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    background-color: var(--color-bg-alt);
+    background-size: cover;
+    background-position: center;
+    min-height: 40vh;
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+  }
+
+  .hero--full {
+    min-height: 80vh;
+  }
+
+  /* ── With background image ─────────────────────────────────── */
+
+  .hero--image .hero-overlay {
+    width: 100%;
+    padding-block: var(--space-2xl);
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.25) 35%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+    display: flex;
+    align-items: flex-end;
+    min-height: inherit;
+  }
+
+  .hero--image .hero-title {
+    color: var(--color-white);
+    font-size: clamp(2.25rem, 6vw, 4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    margin-bottom: var(--space-sm);
+  }
+
+  .hero--image .hero-subtitle {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+    max-width: 50ch;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .hero--image .hero-actions {
+    margin-top: var(--space-lg);
+  }
+
+  /* ── Without background image (plain) ──────────────────────── */
+
+  .hero--plain {
+    align-items: center;
+    border-bottom: 3px solid var(--color-border);
+    background:
+      var(--color-bg-alt)
+      url("data:image/svg+xml,%3Csvg width='1200' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 4 Q 30 0, 60 4 T 120 4 T 180 4 T 240 4 T 300 4 T 360 4 T 420 4 T 480 4 T 540 4 T 600 4 T 660 4 T 720 4 T 780 4 T 840 4 T 900 4 T 960 4 T 1020 4 T 1080 4 T 1140 4 T 1200 4' fill='none' stroke='%23d4a574' stroke-width='1.2' opacity='0.35'/%3E%3C/svg%3E")
+      bottom center / 100% 8px no-repeat;
+    padding-bottom: 8px;
+  }
+
+  .hero--plain .hero-overlay {
+    width: 100%;
+    padding-block: var(--space-2xl);
+  }
+
+  .hero--plain .hero-title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    margin-bottom: var(--space-sm);
+  }
+
+  .hero--plain .hero-subtitle {
+    font-size: 1.15rem;
+    color: var(--color-text-muted);
+    max-width: 45ch;
+  }
+
+  .hero--plain .hero-actions {
+    margin-top: var(--space-md);
+  }
+
+  /* ── Content layout ────────────────────────────────────────── */
+
+  .hero-content {
+    padding-bottom: var(--space-lg);
+  }
+
+  @media (max-width: 768px) {
+    .hero--full {
+      min-height: 65vh;
+    }
+  }
+</style>

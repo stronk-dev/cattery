@@ -1,0 +1,280 @@
+---
+interface Props {
+  turnstileSiteKey?: string;
+}
+
+const { turnstileSiteKey } = Astro.props;
+---
+
+<form id="contact-form" class="contact-form" novalidate>
+  <div class="form-group">
+    <label for="naam">Naam *</label>
+    <input type="text" id="naam" name="naam" required minlength="2" autocomplete="name" />
+  </div>
+
+  <div class="form-group">
+    <label for="email">E-mail *</label>
+    <input type="email" id="email" name="email" required autocomplete="email" />
+  </div>
+
+  <div class="form-group">
+    <label for="telefoon">Telefoon</label>
+    <input type="tel" id="telefoon" name="telefoon" autocomplete="tel" />
+  </div>
+
+  <div class="form-group">
+    <label for="interesse">Interesse in</label>
+    <select id="interesse" name="interesse">
+      <option value="">— Kies een optie —</option>
+      <option value="Kitten">Kitten</option>
+      <option value="Dekdienst">Dekdienst</option>
+      <option value="Algemene vraag">Algemene vraag</option>
+      <option value="Anders">Anders</option>
+    </select>
+  </div>
+
+  <div id="kitten-fields" class="kitten-fields" hidden>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="woonplaats">Woonplaats *</label>
+        <input type="text" id="woonplaats" name="woonplaats" />
+      </div>
+      <div class="form-group">
+        <label for="woonsituatie">Woonsituatie</label>
+        <select id="woonsituatie" name="woonsituatie">
+          <option value="">— Kies een optie —</option>
+          <option value="Appartement">Appartement</option>
+          <option value="Huis met tuin">Huis met tuin</option>
+          <option value="Huis zonder tuin">Huis zonder tuin</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="ervaring">Ervaring met katten</label>
+      <textarea id="ervaring" name="ervaring" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="huisdieren">Huidige huisdieren</label>
+      <textarea id="huisdieren" name="huisdieren" rows="2"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="voorkeur_geslacht">Voorkeur geslacht</label>
+        <select id="voorkeur_geslacht" name="voorkeur_geslacht">
+          <option value="Geen voorkeur">Geen voorkeur</option>
+          <option value="Poes">Poes</option>
+          <option value="Kater">Kater</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="voorkeur_kleur">Voorkeur kleur</label>
+        <input type="text" id="voorkeur_kleur" name="voorkeur_kleur" />
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="bericht">Bericht *</label>
+    <textarea id="bericht" name="bericht" rows="6" required minlength="10"></textarea>
+  </div>
+
+  <!-- Honeypot — hidden from humans -->
+  <div class="form-hp" aria-hidden="true">
+    <label for="phone_number">Telefoon</label>
+    <input type="tel" id="phone_number" name="phone_number" tabindex="-1" autocomplete="off" />
+  </div>
+
+  {turnstileSiteKey && (
+    <div id="turnstile-container" class="form-group"></div>
+  )}
+
+  <button type="submit" id="submit-btn">Verstuur</button>
+
+  <div id="form-status" class="form-status" role="alert" aria-live="polite"></div>
+</form>
+
+<script define:vars={{ turnstileSiteKey }}>
+  const form = document.getElementById('contact-form');
+  const statusEl = document.getElementById('form-status');
+  const submitBtn = document.getElementById('submit-btn');
+  const interesseSelect = document.getElementById('interesse');
+  const kittenFields = document.getElementById('kitten-fields');
+  const woonplaatsInput = document.getElementById('woonplaats');
+
+  // Toggle kitten-specific fields
+  function toggleKittenFields() {
+    const isKitten = interesseSelect.value === 'Kitten';
+    kittenFields.hidden = !isKitten;
+    woonplaatsInput.required = isKitten;
+  }
+  interesseSelect.addEventListener('change', toggleKittenFields);
+
+  // Pre-select from URL param (e.g. /contact?interesse=Kitten)
+  const params = new URLSearchParams(window.location.search);
+  const interesseParam = params.get('interesse');
+  if (interesseParam) {
+    for (const opt of interesseSelect.options) {
+      if (opt.value.toLowerCase() === interesseParam.toLowerCase()) {
+        interesseSelect.value = opt.value;
+        toggleKittenFields();
+        break;
+      }
+    }
+  }
+
+  // Behavioral tracking
+  const formShownAt = Date.now();
+  let mouse = false;
+  let typed = false;
+
+  form.addEventListener('mousemove', () => { mouse = true; }, { once: true });
+  form.addEventListener('keydown', () => { typed = true; }, { once: true });
+
+  // Turnstile
+  let turnstileToken = '';
+  if (turnstileSiteKey) {
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      window.turnstile.render('#turnstile-container', {
+        sitekey: turnstileSiteKey,
+        callback: (token) => { turnstileToken = token; },
+      });
+    };
+    document.head.appendChild(script);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    statusEl.className = 'form-status';
+    statusEl.textContent = 'Bezig met verzenden...';
+
+    const formData = new FormData(form);
+
+    const isKitten = formData.get('interesse') === 'Kitten';
+    const kittenInfo = isKitten ? [
+      '',
+      '--- Kitten Aanvraag ---',
+      formData.get('woonplaats') ? `Woonplaats: ${formData.get('woonplaats')}` : '',
+      formData.get('woonsituatie') ? `Woonsituatie: ${formData.get('woonsituatie')}` : '',
+      formData.get('ervaring') ? `Ervaring met katten: ${formData.get('ervaring')}` : '',
+      formData.get('huisdieren') ? `Huidige huisdieren: ${formData.get('huisdieren')}` : '',
+      formData.get('voorkeur_geslacht') ? `Voorkeur geslacht: ${formData.get('voorkeur_geslacht')}` : '',
+      formData.get('voorkeur_kleur') ? `Voorkeur kleur: ${formData.get('voorkeur_kleur')}` : '',
+    ] : [];
+
+    const payload = {
+      name: formData.get('naam'),
+      email: formData.get('email'),
+      company: '', // unused but expected by steward
+      message: [
+        formData.get('interesse') ? `Interesse: ${formData.get('interesse')}` : '',
+        formData.get('telefoon') ? `Telefoon: ${formData.get('telefoon')}` : '',
+        '',
+        formData.get('bericht'),
+        ...kittenInfo,
+      ].filter(Boolean).join('\n'),
+      phone_number: formData.get('phone_number') || '',
+      human_check: 'human',
+      behavior: {
+        formShownAt,
+        submittedAt: Date.now(),
+        mouse,
+        typed,
+      },
+      ...(turnstileSiteKey && turnstileToken ? { turnstileToken } : {}),
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        statusEl.className = 'form-status form-success';
+        statusEl.textContent = data.message || 'Bedankt voor uw bericht!';
+        form.reset();
+      } else {
+        statusEl.className = 'form-status form-error';
+        statusEl.textContent = data.error || 'Er is iets misgegaan. Probeer het opnieuw.';
+      }
+    } catch {
+      statusEl.className = 'form-status form-error';
+      statusEl.textContent = 'Er is een fout opgetreden. Controleer uw internetverbinding.';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    max-width: 500px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  @media (max-width: 500px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  .kitten-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--color-bg-alt);
+    border-radius: var(--radius);
+  }
+
+  .kitten-fields[hidden] {
+    display: none;
+  }
+
+  .form-hp {
+    position: absolute;
+    left: -9999px;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .form-status {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    min-height: 1.5em;
+  }
+
+  .form-status:empty {
+    display: none;
+  }
+
+  .form-success {
+    background: #e8f5e9;
+    color: var(--color-beschikbaar);
+  }
+
+  .form-error {
+    background: #fbe9e7;
+    color: var(--color-verkocht);
+  }
+</style>

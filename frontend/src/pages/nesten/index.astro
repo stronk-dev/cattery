@@ -1,0 +1,51 @@
+---
+import Base from '../../layouts/Base.astro';
+import NestCard from '../../components/NestCard.astro';
+import { fetchNesten, fetchSiteInstellingen } from '../../lib/directus';
+
+let site, nesten;
+try {
+  [site, nesten] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchNesten(),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  nesten = [];
+}
+
+const actief = nesten.filter(n => ['verwacht', 'geboren', 'beschikbaar'].includes(n.status));
+const afgeleverd = nesten.filter(n => n.status === 'afgeleverd');
+---
+
+<Base title="Nesten" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <h1>Nesten</h1>
+
+      {actief.length > 0 && (
+        <div style="margin-top: var(--space-xl);">
+          <h2 class="section-title">Actueel</h2>
+          <div class="grid grid-2">
+            {actief.map(nest => <NestCard nest={nest} />)}
+          </div>
+        </div>
+      )}
+
+      {afgeleverd.length > 0 && (
+        <div style="margin-top: var(--space-xl);">
+          <h2 class="section-title">Eerdere Nesten</h2>
+          <div class="grid grid-2">
+            {afgeleverd.map(nest => <NestCard nest={nest} />)}
+          </div>
+        </div>
+      )}
+
+      {nesten.length === 0 && (
+        <p style="color: var(--color-text-muted); margin-top: var(--space-lg);">
+          Er zijn nog geen nesten. Houd onze <a href="/blog">blog</a> in de gaten voor aankondigingen.
+        </p>
+      )}
+    </div>
+  </section>
+</Base>

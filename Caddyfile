@@ -1,0 +1,28 @@
+{
+	# For local dev, disable automatic HTTPS
+	# Remove this block in production and replace :80 with your domain
+	auto_https off
+}
+
+:80 {
+	# Contact form API → steward
+	handle /api/* {
+		reverse_proxy steward:18032
+	}
+
+	# Directus assets + admin
+	handle /assets/* {
+		reverse_proxy directus:8055
+	}
+
+	handle /admin* {
+		reverse_proxy directus:8055
+	}
+
+	# Static files from Astro build
+	handle {
+		root * /srv
+		file_server
+		try_files {path} {path}.html {path}/index.html =404
+	}
+}

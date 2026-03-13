@@ -1,0 +1,59 @@
+---
+import Base from '../layouts/Base.astro';
+import ErvaringCard from '../components/ErvaringCard.astro';
+import { fetchErvaringen, fetchSiteInstellingen } from '../lib/directus';
+
+let site, ervaringen;
+try {
+  [site, ervaringen] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchErvaringen(),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  ervaringen = [];
+}
+---
+
+<Base title="Ervaringen" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>Ervaringen</h1>
+        <p class="page-intro">Lees wat onze adoptiegezinnen vertellen over hun nieuwe gezinslid.</p>
+      </div>
+
+      {ervaringen.length > 0 ? (
+        <div class="grid grid-2">
+          {ervaringen.map(e => <ErvaringCard ervaring={e} />)}
+        </div>
+      ) : (
+        <p class="empty-state">Er zijn nog geen ervaringen gedeeld.</p>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .empty-state {
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+</style>

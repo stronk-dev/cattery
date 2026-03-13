@@ -1,0 +1,167 @@
+---
+---
+
+<div class="cat-face">
+  <div class="cat-face-ear cat-face-ear--left"></div>
+  <div class="cat-face-ear cat-face-ear--right"></div>
+  <div class="cat-face-head">
+    <div class="cat-face-eye cat-face-eye--left">
+      <div class="cat-face-pupil"></div>
+    </div>
+    <div class="cat-face-eye cat-face-eye--right">
+      <div class="cat-face-pupil"></div>
+    </div>
+    <div class="cat-face-muzzle"></div>
+  </div>
+</div>
+
+<style>
+  .cat-face {
+    position: relative;
+    height: 2.2em;
+    width: 2.5em;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  /* Ears — simple, same color as head */
+  .cat-face-ear {
+    position: absolute;
+    top: -22%;
+    height: 50%;
+    width: 30%;
+    background: var(--color-bg-dark);
+  }
+
+  .cat-face-ear--left {
+    left: 2%;
+    border-radius: 60% 40% 0% 0% / 100% 100% 0% 0%;
+    transform: rotate(-8deg);
+  }
+
+  .cat-face-ear--right {
+    right: 2%;
+    border-radius: 40% 60% 0% 0% / 100% 100% 0% 0%;
+    transform: rotate(8deg);
+  }
+
+  /* Head */
+  .cat-face-head {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    background: var(--color-bg-dark);
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  /* Eyes */
+  .cat-face-eye {
+    position: absolute;
+    top: 35%;
+    height: 30%;
+    width: 31%;
+    background: var(--color-bg);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  }
+
+  .cat-face-eye::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 0;
+    width: 100%;
+    border-radius: 0 0 50% 50% / 0 0 40% 40%;
+    background: var(--color-bg-dark);
+    animation: cat-face-blink 4s infinite ease-in;
+  }
+
+  .cat-face-eye::before {
+    content: '';
+    position: absolute;
+    top: 60%;
+    height: 10%;
+    width: 15%;
+    background: var(--color-bg);
+    border-radius: 50%;
+  }
+
+  .cat-face-eye--left {
+    left: 0;
+  }
+
+  .cat-face-eye--left::before {
+    right: -5%;
+  }
+
+  .cat-face-eye--right {
+    right: 0;
+  }
+
+  .cat-face-eye--right::before {
+    left: -5%;
+  }
+
+  /* Pupils */
+  .cat-face-pupil {
+    position: absolute;
+    top: 25%;
+    height: 50%;
+    width: 20%;
+    background: var(--color-bg-dark);
+    border-radius: 50%;
+    animation: cat-face-look 4s infinite;
+  }
+
+  .cat-face-eye--left .cat-face-pupil {
+    right: 30%;
+  }
+
+  .cat-face-eye--right .cat-face-pupil {
+    left: 30%;
+  }
+
+  .cat-face-pupil::after {
+    content: '';
+    position: absolute;
+    top: 30%;
+    right: -5%;
+    height: 20%;
+    width: 35%;
+    border-radius: 50%;
+    background: var(--color-bg);
+  }
+
+  /* Muzzle */
+  .cat-face-muzzle {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    height: 6%;
+    width: 10%;
+    background: var(--color-bg);
+    transform: translateX(-50%);
+    border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  }
+
+  /* Animations */
+  @keyframes cat-face-blink {
+    0% { height: 0; }
+    90% { height: 0; }
+    92.5% { height: 100%; }
+    95% { height: 0; }
+    97.5% { height: 100%; }
+    100% { height: 0; }
+  }
+
+  @keyframes cat-face-look {
+    0% { transform: translate(0); }
+    5% { transform: translate(50%, -25%); }
+    10% { transform: translate(50%, -25%); }
+    15% { transform: translate(-100%, -25%); }
+    20% { transform: translate(-100%, -25%); }
+    25% { transform: translate(0, 0); }
+    100% { transform: translate(0, 0); }
+  }
+</style>

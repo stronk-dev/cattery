@@ -1,0 +1,45 @@
+---
+interface Props {
+  status: string;
+}
+
+const { status } = Astro.props;
+
+const labels: Record<string, string> = {
+  beschikbaar: 'Beschikbaar',
+  optie: 'Optie',
+  gereserveerd: 'Gereserveerd',
+  verkocht: 'Verkocht',
+  verwacht: 'Verwacht',
+  geboren: 'Geboren',
+  afgeleverd: 'Afgeleverd',
+  actief: 'Actief',
+  gepensioneerd: 'Gepensioneerd',
+};
+---
+
+<span class:list={['badge', `badge-${status}`]}>
+  {labels[status] || status}
+</span>
+
+<style>
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    line-height: 1.4;
+  }
+
+  .badge-beschikbaar { background: #e8f5e9; color: var(--color-beschikbaar); }
+  .badge-optie { background: #fff8e1; color: var(--color-optie); }
+  .badge-gereserveerd { background: #fff3e0; color: var(--color-gereserveerd); }
+  .badge-verkocht { background: #fbe9e7; color: var(--color-verkocht); }
+  .badge-verwacht { background: #e3f2fd; color: #1565c0; }
+  .badge-geboren { background: #f3e5f5; color: #7b1fa2; }
+  .badge-afgeleverd { background: #f5f5f5; color: #616161; }
+  .badge-actief { background: #e8f5e9; color: var(--color-beschikbaar); }
+  .badge-gepensioneerd { background: #f5f5f5; color: #616161; }
+</style>

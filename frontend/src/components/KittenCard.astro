@@ -1,0 +1,119 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import { getImageURL } from '../lib/directus';
+import type { Kitten } from '../lib/types';
+
+interface Props {
+  kitten: Kitten;
+}
+
+const { kitten } = Astro.props;
+const geslachtLabel = kitten.geslacht === 'poes' ? 'Poes' : 'Kater';
+const geslachtSymbol = kitten.geslacht === 'poes' ? '\u2640' : '\u2642';
+const isSold = kitten.status === 'verkocht' || kitten.status === 'afgeleverd';
+---
+
+<a href={`/kittens/${kitten.slug}`} class:list={['kitten-card', { 'kitten-card--sold': isSold }]}>
+  <div class="kitten-card-image-wrapper">
+    {kitten.foto && (
+      <img
+        src={getImageURL(kitten.foto.id, { width: 400, height: 400, fit: 'cover', format: 'webp', quality: 80 })}
+        alt={kitten.foto.description || kitten.naam}
+        width="400"
+        height="400"
+        loading="lazy"
+        decoding="async"
+      />
+    )}
+    <div class="kitten-card-badge">
+      <StatusBadge status={kitten.status} />
+    </div>
+  </div>
+  <div class="kitten-card-body">
+    <h3 class="kitten-card-name">
+      {kitten.naam}
+      <span class:list={['kitten-card-gender', kitten.geslacht === 'poes' ? 'gender-female' : 'gender-male']}>
+        {geslachtSymbol}
+      </span>
+    </h3>
+    <p class="kitten-card-meta">{geslachtLabel} &middot; {kitten.kleur}</p>
+  </div>
+</a>
+
+<style>
+  .kitten-card {
+    display: block;
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--color-text);
+  }
+
+  .kitten-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  .kitten-card-image-wrapper {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kitten-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                filter 0.3s ease;
+  }
+
+  .kitten-card:hover img {
+    transform: scale(1.05);
+  }
+
+  /* Sold kittens: desaturated image */
+  .kitten-card--sold img {
+    filter: grayscale(30%) opacity(0.85);
+  }
+
+  .kitten-card-badge {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+  }
+
+  .kitten-card-body {
+    padding: var(--space-md);
+  }
+
+  .kitten-card-name {
+    font-size: 1.15rem;
+    margin-bottom: var(--space-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .kitten-card-gender {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .gender-female {
+    color: #d4568a;
+  }
+
+  .gender-male {
+    color: #4a7fb5;
+  }
+
+  .kitten-card-meta {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+  }
+</style>

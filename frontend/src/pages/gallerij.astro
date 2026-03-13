@@ -1,0 +1,302 @@
+---
+import Base from '../layouts/Base.astro';
+import {
+  fetchKatten,
+  fetchKittens,
+  fetchNesten,
+  fetchSiteInstellingen,
+  getImageURL,
+} from '../lib/directus';
+
+let site, katten, kittens, nesten;
+try {
+  [site, katten, kittens, nesten] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchKatten(),
+    fetchKittens(),
+    fetchNesten(),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  katten = [];
+  kittens = [];
+  nesten = [];
+}
+
+interface GalleryItem {
+  src: string;
+  alt: string;
+  href: string;
+  category: 'katten' | 'kittens' | 'nesten';
+}
+
+const items: GalleryItem[] = [
+  ...katten.flatMap(k => {
+    const images: GalleryItem[] = [];
+    if (k.foto) {
+      images.push({
+        src: getImageURL(k.foto.id, { width: 400, format: 'webp', quality: 80 }),
+        alt: k.naam,
+        href: `/onze-katten/${k.slug}`,
+        category: 'katten',
+      });
+    }
+    k.fotos?.forEach(f => {
+      if (f.directus_files_id) {
+        images.push({
+          src: getImageURL(f.directus_files_id.id, { width: 400, format: 'webp', quality: 80 }),
+          alt: k.naam,
+          href: `/onze-katten/${k.slug}`,
+          category: 'katten',
+        });
+      }
+    });
+    return images;
+  }),
+  ...kittens.flatMap(k => {
+    const images: GalleryItem[] = [];
+    if (k.foto) {
+      images.push({
+        src: getImageURL(k.foto.id, { width: 400, format: 'webp', quality: 80 }),
+        alt: k.naam,
+        href: `/kittens/${k.slug}`,
+        category: 'kittens',
+      });
+    }
+    k.fotos?.forEach(f => {
+      if (f.directus_files_id) {
+        images.push({
+          src: getImageURL(f.directus_files_id.id, { width: 400, format: 'webp', quality: 80 }),
+          alt: k.naam,
+          href: `/kittens/${k.slug}`,
+          category: 'kittens',
+        });
+      }
+    });
+    return images;
+  }),
+  ...nesten.flatMap(n => {
+    const images: GalleryItem[] = [];
+    if (n.foto) {
+      images.push({
+        src: getImageURL(n.foto.id, { width: 400, format: 'webp', quality: 80 }),
+        alt: n.naam,
+        href: `/nesten/${n.slug}`,
+        category: 'nesten',
+      });
+    }
+    n.fotos?.forEach(f => {
+      if (f.directus_files_id) {
+        images.push({
+          src: getImageURL(f.directus_files_id.id, { width: 400, format: 'webp', quality: 80 }),
+          alt: n.naam,
+          href: `/nesten/${n.slug}`,
+          category: 'nesten',
+        });
+      }
+    });
+    return images;
+  }),
+];
+---
+
+<Base title="Gallerij" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>Gallerij</h1>
+        <p class="page-intro">
+          Bekijk foto's van al onze katten, kittens en nesten.
+        </p>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="alles" type="button">Alles</button>
+        <button class="filter-btn" data-filter="katten" type="button">Katten</button>
+        <button class="filter-btn" data-filter="kittens" type="button">Kittens</button>
+        <button class="filter-btn" data-filter="nesten" type="button">Nesten</button>
+      </div>
+
+      {items.length > 0 ? (
+        <div class="masonry" id="gallery-grid">
+          {items.map(item => (
+            <a
+              class="masonry-item"
+              href={item.href}
+              data-category={item.category}
+            >
+              <img
+                src={item.src}
+                alt={item.alt}
+                loading="lazy"
+                decoding="async"
+              />
+              <span class="masonry-label">{item.alt}</span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p class="empty-state">
+          Er zijn nog geen foto's beschikbaar. Voeg katten, kittens of nesten toe via het admin paneel.
+        </p>
+      )}
+    </div>
+  </section>
+</Base>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+  const items = document.querySelectorAll<HTMLElement>('.masonry-item');
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const filter = btn.dataset.filter;
+
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      items.forEach(item => {
+        if (filter === 'alles' || item.dataset.category === filter) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    });
+  });
+</script>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  /* Filter buttons */
+  .filter-bar {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xl);
+  }
+
+  .filter-btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 999px;
+    font-size: 0.925rem;
+    font-weight: 500;
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 2px solid var(--color-border);
+    transition: var(--transition-smooth);
+    box-shadow: none;
+  }
+
+  .filter-btn:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .filter-btn.active {
+    background: var(--color-accent);
+    color: var(--color-white);
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .filter-btn.active:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    color: var(--color-white);
+  }
+
+  /* Masonry grid */
+  .masonry {
+    columns: 4;
+    column-gap: var(--space-md);
+  }
+
+  .masonry-item {
+    display: block;
+    break-inside: avoid;
+    margin-bottom: var(--space-md);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-smooth);
+  }
+
+  .masonry-item:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-3px);
+  }
+
+  .masonry-item.hidden {
+    display: none;
+  }
+
+  .masonry-item img {
+    width: 100%;
+    display: block;
+  }
+
+  .masonry-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--space-sm) var(--space-md);
+    background: linear-gradient(transparent, rgba(44, 36, 32, 0.7));
+    color: var(--color-white);
+    font-size: 0.875rem;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .masonry-item:hover .masonry-label {
+    opacity: 1;
+  }
+
+  .empty-state {
+    color: var(--color-text-muted);
+    margin-top: var(--space-lg);
+    text-align: center;
+  }
+
+  /* Responsive columns */
+  @media (max-width: 900px) {
+    .masonry {
+      columns: 3;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .masonry {
+      columns: 2;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .masonry {
+      columns: 1;
+    }
+  }
+</style>

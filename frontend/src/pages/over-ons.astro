@@ -1,0 +1,90 @@
+---
+import Base from '../layouts/Base.astro';
+import { fetchPagina, fetchSiteInstellingen, getImageURL } from '../lib/directus';
+
+let site, pagina;
+try {
+  [site, pagina] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchPagina('over-ons'),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  pagina = null;
+}
+---
+
+<Base title="Over Ons" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>{pagina?.titel || 'Over Ons'}</h1>
+        <p class="page-intro">
+          Leer ons en onze cattery beter kennen. Ontdek onze visie, werkwijze en de liefde waarmee wij onze katten fokken.
+        </p>
+      </div>
+
+      {pagina ? (
+        <div class="over-ons-content">
+          {pagina.afbeelding && (
+            <img
+              class="over-ons-foto"
+              src={getImageURL(pagina.afbeelding.id, { width: 600, format: 'webp', quality: 80 })}
+              alt={pagina.afbeelding.title || 'Over ons'}
+              width="600"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+          <div class="rich-text" set:html={pagina.inhoud} />
+        </div>
+      ) : (
+        <p class="empty-state">
+          Deze pagina is nog niet aangemaakt. Maak een pagina aan in Directus met de slug "over-ons".
+        </p>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .over-ons-foto {
+    float: right;
+    max-width: 50%;
+    margin-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  @media (max-width: 600px) {
+    .over-ons-foto {
+      float: none;
+      max-width: 100%;
+      margin-left: 0;
+      margin-bottom: var(--space-lg);
+    }
+  }
+
+  .empty-state {
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+</style>

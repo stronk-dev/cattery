@@ -1,0 +1,4 @@
+services:
+  caddy:
+    deploy:
+      replicas: 0

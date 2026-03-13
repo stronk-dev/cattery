@@ -1,0 +1,197 @@
+---
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import KittenCard from '../../components/KittenCard.astro';
+import Gallery from '../../components/Gallery.astro';
+import { fetchNesten, fetchNest, fetchSiteInstellingen, getImageURL } from '../../lib/directus';
+import type { Nest } from '../../lib/types';
+
+export async function getStaticPaths() {
+  let nesten: Nest[] = [];
+  try { nesten = await fetchNesten(); } catch {}
+  return nesten.map(n => ({ params: { slug: n.slug } }));
+}
+
+const { slug } = Astro.params;
+let site, nest: Nest;
+try {
+  [site, nest] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchNest(slug!),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  nest = null as any;
+}
+
+const datum = nest?.geboortedatum
+  ? new Date(nest.geboortedatum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
+const verwachtDatum = nest?.verwacht_op
+  ? new Date(nest.verwacht_op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
+const galleryImages = nest?.fotos?.map(f => f.directus_files_id).filter(Boolean) || [];
+---
+
+<Base
+  title={nest?.naam || 'Nest'}
+  siteInstellingen={site}
+  description={nest ? `${nest.naam}${datum ? ' — geboren ' + datum : ''}` : undefined}
+  ogImage={nest?.foto ? getImageURL(nest.foto.id, { width: 1200, format: 'webp' }) : undefined}
+>
+  {nest ? (
+    <section class="section">
+      <div class="container">
+        <p class="breadcrumb"><a href="/nesten">&larr; Nesten</a></p>
+
+        <div class="nest-header">
+          <div>
+            <h1>{nest.naam}</h1>
+            <StatusBadge status={nest.status} />
+          </div>
+
+          {nest.foto && (
+            <button class="hero-expand" data-gallery-index="0" type="button" aria-label="Foto vergroten">
+              <img
+                class="nest-hero"
+                src={getImageURL(nest.foto.id, { width: 800, format: 'webp', quality: 85 })}
+                alt={nest.foto.description || nest.naam}
+                width="800"
+                fetchpriority="high"
+              />
+            </button>
+          )}
+        </div>
+
+        <div class="nest-meta">
+          {datum && <p><strong>Geboortedatum:</strong> {datum}</p>}
+          {!datum && verwachtDatum && <p><strong>Verwacht op:</strong> {verwachtDatum}</p>}
+
+          <div class="nest-parents">
+            {nest.moeder && (
+              <div class="nest-parent">
+                <span class="parent-label">Moeder</span>
+                <a href={`/onze-katten/${nest.moeder.slug}`} class="parent-link">
+                  {nest.moeder.foto && (
+                    <img
+                      src={getImageURL(nest.moeder.foto.id, { width: 80, height: 80, fit: 'cover', format: 'webp' })}
+                      alt={nest.moeder.naam}
+                      width="80"
+                      height="80"
+                      loading="lazy"
+                    />
+                  )}
+                  <span>{nest.moeder.naam}</span>
+                </a>
+              </div>
+            )}
+            {nest.vader && (
+              <div class="nest-parent">
+                <span class="parent-label">Vader</span>
+                <a href={`/onze-katten/${nest.vader.slug}`} class="parent-link">
+                  {nest.vader.foto && (
+                    <img
+                      src={getImageURL(nest.vader.foto.id, { width: 80, height: 80, fit: 'cover', format: 'webp' })}
+                      alt={nest.vader.naam}
+                      width="80"
+                      height="80"
+                      loading="lazy"
+                    />
+                  )}
+                  <span>{nest.vader.naam}</span>
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {nest.beschrijving && (
+          <div class="rich-text" style="margin-top: var(--space-lg);" set:html={nest.beschrijving} />
+        )}
+
+        {(nest.foto || galleryImages.length > 0) && (
+          <div style="margin-top: var(--space-xl);">
+            {galleryImages.length > 0 && <h2 style="margin-bottom: var(--space-md);">Foto's</h2>}
+            <Gallery images={galleryImages} heroImage={nest.foto} />
+          </div>
+        )}
+
+        {nest.kittens?.length > 0 && (
+          <div style="margin-top: var(--space-xl);">
+            <h2 class="section-title">Kittens in dit nest</h2>
+            <div class="grid grid-3">
+              {nest.kittens.map(kitten => <KittenCard kitten={kitten} />)}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  ) : (
+    <section class="section">
+      <div class="container">
+        <p>Nest niet gevonden.</p>
+        <a href="/nesten">&larr; Terug naar nesten</a>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .breadcrumb {
+    margin-bottom: var(--space-lg);
+    font-size: 0.9rem;
+  }
+
+  .nest-header {
+    margin-bottom: var(--space-lg);
+  }
+
+  .nest-header h1 {
+    margin-bottom: var(--space-sm);
+  }
+
+  .nest-hero {
+    border-radius: var(--radius-lg);
+    width: 100%;
+    margin-top: var(--space-lg);
+    max-height: 400px;
+    object-fit: cover;
+  }
+
+  .nest-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .nest-parents {
+    display: flex;
+    gap: var(--space-xl);
+    flex-wrap: wrap;
+  }
+
+  .parent-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .parent-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--color-text);
+  }
+
+  .parent-link img {
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .parent-link:hover {
+    color: var(--color-accent);
+  }
+</style>

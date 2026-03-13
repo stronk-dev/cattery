@@ -1,0 +1,102 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import { getImageURL } from '../lib/directus';
+import type { Nest } from '../lib/types';
+
+interface Props {
+  nest: Nest;
+}
+
+const { nest } = Astro.props;
+const kittenCount = nest.kittens?.length || 0;
+const datum = nest.geboortedatum
+  ? new Date(nest.geboortedatum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  : nest.verwacht_op
+    ? `Verwacht: ${new Date(nest.verwacht_op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`
+    : null;
+---
+
+<a href={`/nesten/${nest.slug}`} class="nest-card">
+  {nest.foto && (
+    <img
+      src={getImageURL(nest.foto.id, { width: 600, height: 300, fit: 'cover', format: 'webp', quality: 80 })}
+      alt={nest.foto.description || nest.naam}
+      width="600"
+      height="300"
+      loading="lazy"
+      decoding="async"
+    />
+  )}
+  <div class="nest-card-body">
+    <div class="nest-card-header">
+      <h3 class="nest-card-name">{nest.naam}</h3>
+      <StatusBadge status={nest.status} />
+    </div>
+    {datum && <p class="nest-card-date">{datum}</p>}
+    <p class="nest-card-meta">
+      {nest.moeder && <span>Moeder: {nest.moeder.naam}</span>}
+      {nest.moeder && nest.vader && <span> &middot; </span>}
+      {nest.vader && <span>Vader: {nest.vader.naam}</span>}
+    </p>
+    {kittenCount > 0 && (
+      <p class="nest-card-kittens">{kittenCount} kitten{kittenCount !== 1 ? 's' : ''}</p>
+    )}
+  </div>
+</a>
+
+<style>
+  .nest-card {
+    display: block;
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    transition: box-shadow 0.2s, transform 0.2s;
+    color: var(--color-text);
+  }
+
+  .nest-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .nest-card img {
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+  }
+
+  .nest-card-body {
+    padding: var(--space-md);
+  }
+
+  .nest-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+  }
+
+  .nest-card-name {
+    font-size: 1.15rem;
+  }
+
+  .nest-card-date {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    margin-bottom: var(--space-xs);
+  }
+
+  .nest-card-meta {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+  }
+
+  .nest-card-kittens {
+    margin-top: var(--space-sm);
+    font-size: 0.85rem;
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+</style>

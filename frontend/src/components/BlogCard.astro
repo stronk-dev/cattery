@@ -1,0 +1,77 @@
+---
+import { getImageURL } from '../lib/directus';
+import type { BlogBericht } from '../lib/types';
+
+interface Props {
+  post: BlogBericht;
+}
+
+const { post } = Astro.props;
+const datum = new Date(post.gepubliceerd_op).toLocaleDateString('nl-NL', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<a href={`/blog/${post.slug}`} class="blog-card">
+  {post.afbeelding && (
+    <img
+      src={getImageURL(post.afbeelding.id, { width: 600, height: 300, fit: 'cover', format: 'webp', quality: 80 })}
+      alt={post.afbeelding.description || post.titel}
+      width="600"
+      height="300"
+      loading="lazy"
+      decoding="async"
+    />
+  )}
+  <div class="blog-card-body">
+    <time class="blog-card-date" datetime={post.gepubliceerd_op}>{datum}</time>
+    <h3 class="blog-card-title">{post.titel}</h3>
+    {post.samenvatting && <p class="blog-card-excerpt">{post.samenvatting}</p>}
+  </div>
+</a>
+
+<style>
+  .blog-card {
+    display: block;
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    transition: box-shadow 0.2s, transform 0.2s;
+    color: var(--color-text);
+  }
+
+  .blog-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .blog-card img {
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+  }
+
+  .blog-card-body {
+    padding: var(--space-md);
+  }
+
+  .blog-card-date {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .blog-card-title {
+    font-size: 1.15rem;
+    margin-top: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .blog-card-excerpt {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+</style>

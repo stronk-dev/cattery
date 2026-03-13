@@ -1,0 +1,99 @@
+---
+import Base from '../layouts/Base.astro';
+import ContactForm from '../components/ContactForm.astro';
+import { fetchSiteInstellingen } from '../lib/directus';
+
+let site;
+try {
+  site = await fetchSiteInstellingen();
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+}
+
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY || '';
+---
+
+<Base title="Contact" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>Contact</h1>
+        <p class="page-intro">
+          Heeft u interesse in een kitten, wilt u meer weten over onze cattery of heeft u een andere vraag? Wij horen graag van u en reageren zo snel mogelijk.
+        </p>
+      </div>
+
+      <div class="contact-page">
+        <div class="contact-info">
+          <h2>Gegevens</h2>
+          <p>Heeft u interesse in een kitten of wilt u meer informatie? Neem gerust contact met ons op.</p>
+
+          {site.contact_email && (
+            <p><strong>E-mail:</strong> <a href={`mailto:${site.contact_email}`}>{site.contact_email}</a></p>
+          )}
+          {site.telefoon && (
+            <p><strong>Telefoon:</strong> {site.telefoon}</p>
+          )}
+          {site.adres && (
+            <p><strong>Adres:</strong> {site.adres}</p>
+          )}
+        </div>
+
+        <div class="contact-form-wrapper">
+          <h2>Stuur ons een bericht</h2>
+          <ContactForm turnstileSiteKey={turnstileSiteKey || undefined} />
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .contact-page {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--space-2xl);
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .contact-page {
+      grid-template-columns: 1fr;
+      gap: var(--space-xl);
+    }
+  }
+
+  .contact-info h2 {
+    margin-bottom: var(--space-md);
+  }
+
+  .contact-info p {
+    margin-bottom: var(--space-sm);
+    color: var(--color-text-muted);
+  }
+
+  .contact-info a {
+    color: var(--color-accent);
+  }
+
+  .contact-form-wrapper h2 {
+    margin-bottom: var(--space-lg);
+  }
+</style>

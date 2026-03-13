@@ -1,0 +1,191 @@
+---
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import Gallery from '../../components/Gallery.astro';
+import NestCard from '../../components/NestCard.astro';
+import { fetchAlleKatten, fetchKat, fetchNesten, fetchSiteInstellingen, getImageURL } from '../../lib/directus';
+import type { Kat, Nest } from '../../lib/types';
+
+export async function getStaticPaths() {
+  let katten: Kat[] = [];
+  try { katten = await fetchAlleKatten(); } catch {}
+  return katten.map(kat => ({ params: { slug: kat.slug } }));
+}
+
+const { slug } = Astro.params;
+let site, kat: Kat, nesten: Nest[] = [];
+try {
+  [site, kat] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchKat(slug!),
+  ]);
+  // Find litters involving this cat
+  const alleNesten = await fetchNesten();
+  nesten = alleNesten.filter(n => n.moeder?.id === kat.id || n.vader?.id === kat.id);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  kat = null as any;
+}
+
+const rolLabel = kat?.rol === 'fokpoes' ? 'Fokpoes' : 'Dekkater';
+const geslachtLabel = kat?.geslacht === 'poes' ? 'Poes' : 'Kater';
+const geboortedatum = kat?.geboortedatum
+  ? new Date(kat.geboortedatum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
+
+const galleryImages = kat?.fotos?.map(f => f.directus_files_id).filter(Boolean) || [];
+---
+
+<Base
+  title={kat?.naam || 'Kat'}
+  siteInstellingen={site}
+  description={`${kat?.naam} — ${rolLabel}, ${kat?.kleur}`}
+  ogImage={kat?.foto ? getImageURL(kat.foto.id, { width: 1200, format: 'webp' }) : undefined}
+  jsonLd={kat ? {
+    '@context': 'https://schema.org',
+    '@type': 'Thing',
+    name: kat.naam,
+    description: `${kat.naam} — ${rolLabel}, ${kat.kleur}`,
+    image: kat.foto ? getImageURL(kat.foto.id, { width: 1200, format: 'webp' }) : undefined,
+  } : undefined}
+>
+  {kat ? (
+    <section class="section">
+      <div class="container">
+        <p class="breadcrumb"><a href="/onze-katten">&larr; Onze Katten</a></p>
+
+        <div class="cat-detail">
+          {kat.foto && (
+            <button class="hero-expand" data-gallery-index="0" type="button" aria-label="Foto vergroten">
+              <img
+                class="cat-hero"
+                src={getImageURL(kat.foto.id, { width: 800, format: 'webp', quality: 85 })}
+                alt={kat.foto.description || kat.naam}
+                width="800"
+                fetchpriority="high"
+              />
+            </button>
+          )}
+
+          <div class="cat-info">
+            <h1>{kat.naam}</h1>
+            {kat.stamboom_naam && <p class="pedigree-name">{kat.stamboom_naam}</p>}
+
+            <div class="info-badges">
+              <StatusBadge status={kat.status} />
+              <span class="info-tag">{rolLabel}</span>
+            </div>
+
+            <table class="info-table">
+              <tbody>
+                <tr><th>Geslacht</th><td>{geslachtLabel}</td></tr>
+                {kat.ras && <tr><th>Ras</th><td>{kat.ras}</td></tr>}
+                {kat.kleur && <tr><th>Kleur</th><td>{kat.kleur}</td></tr>}
+                {geboortedatum && <tr><th>Geboortedatum</th><td>{geboortedatum}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {kat.beschrijving && (
+          <div class="rich-text" style="margin-top: var(--space-xl);" set:html={kat.beschrijving} />
+        )}
+
+        {kat.gezondheid_info && (
+          <div style="margin-top: var(--space-xl);">
+            <h2>Gezondheid</h2>
+            <div class="rich-text" set:html={kat.gezondheid_info} />
+          </div>
+        )}
+
+        {(kat.foto || galleryImages.length > 0) && (
+          <div style="margin-top: var(--space-xl);">
+            {galleryImages.length > 0 && <h2 style="margin-bottom: var(--space-md);">Foto's</h2>}
+            <Gallery images={galleryImages} heroImage={kat.foto} />
+          </div>
+        )}
+
+        {nesten.length > 0 && (
+          <div style="margin-top: var(--space-xl);">
+            <h2 class="section-title">Nesten</h2>
+            <div class="grid grid-2">
+              {nesten.map(nest => <NestCard nest={nest} />)}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  ) : (
+    <section class="section">
+      <div class="container">
+        <p>Kat niet gevonden.</p>
+        <a href="/onze-katten">&larr; Terug naar onze katten</a>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .breadcrumb {
+    margin-bottom: var(--space-lg);
+    font-size: 0.9rem;
+  }
+
+  .cat-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .cat-detail {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .cat-hero {
+    border-radius: var(--radius-lg);
+    width: 100%;
+  }
+
+  .pedigree-name {
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin-bottom: var(--space-md);
+  }
+
+  .info-badges {
+    display: flex;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+  }
+
+  .info-tag {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--color-bg-alt);
+    color: var(--color-text-muted);
+  }
+
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .info-table th,
+  .info-table td {
+    text-align: left;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .info-table th {
+    font-weight: 500;
+    color: var(--color-text-muted);
+    width: 40%;
+  }
+</style>

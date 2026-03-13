@@ -1,0 +1,118 @@
+---
+import Base from '../../layouts/Base.astro';
+import KittenCard from '../../components/KittenCard.astro';
+import { fetchKittens, fetchSiteInstellingen } from '../../lib/directus';
+
+let site, kittens;
+try {
+  [site, kittens] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchKittens(),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  kittens = [];
+}
+
+const beschikbaar = kittens.filter(k => k.status === 'beschikbaar' || k.status === 'optie');
+const gereserveerd = kittens.filter(k => k.status === 'gereserveerd');
+const verkocht = kittens.filter(k => k.status === 'verkocht');
+---
+
+<Base title="Kittens" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>Kittens</h1>
+        <p class="page-intro">
+          Op dit moment hebben wij de volgende kittens. Neem contact met ons op voor meer informatie of om een kitten te reserveren.
+        </p>
+      </div>
+
+      {beschikbaar.length > 0 && (
+        <div class="kitten-group">
+          <h2 class="section-title">Beschikbaar</h2>
+          <div class="grid grid-3">
+            {beschikbaar.map(kitten => <KittenCard kitten={kitten} />)}
+          </div>
+        </div>
+      )}
+
+      {gereserveerd.length > 0 && (
+        <div class="kitten-group">
+          <h2 class="section-title">Gereserveerd</h2>
+          <div class="grid grid-3">
+            {gereserveerd.map(kitten => <KittenCard kitten={kitten} />)}
+          </div>
+        </div>
+      )}
+
+      {verkocht.length > 0 && (
+        <div class="kitten-group">
+          <h2 class="section-title">Nieuw Thuis Gevonden</h2>
+          <div class="grid grid-3">
+            {verkocht.map(kitten => <KittenCard kitten={kitten} />)}
+          </div>
+        </div>
+      )}
+
+      {kittens.length === 0 && (
+        <div class="empty-state">
+          <p class="empty-state-text">
+            Op dit moment zijn er geen kittens beschikbaar. Houd onze website in de gaten of neem contact met ons op om te informeren naar toekomstige nesten.
+          </p>
+          <div class="empty-state-actions">
+            <a href="/contact" class="btn">Neem contact op</a>
+            <a href="/blog" class="btn btn-outline">Bekijk onze blog</a>
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .kitten-group {
+    margin-top: var(--space-xl);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: var(--space-2xl) var(--space-lg);
+    background: var(--color-bg-alt);
+    border-radius: var(--radius-lg);
+    max-width: 550px;
+    margin-inline: auto;
+  }
+
+  .empty-state-text {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+  }
+
+  .empty-state-actions {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+</style>

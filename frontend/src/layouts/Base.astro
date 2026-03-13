@@ -1,0 +1,94 @@
+---
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import Seo from '../components/Seo.astro';
+import WalkingKittens from '../components/WalkingKittens.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article';
+  publishedTime?: string;
+  catteryNaam?: string;
+  jsonLd?: Record<string, any>;
+  siteInstellingen?: {
+    cattery_naam?: string;
+    contact_email?: string;
+    telefoon?: string;
+    adres?: string;
+    facebook_url?: string;
+    instagram_url?: string;
+    logo?: { id: string; title: string | null } | null;
+  };
+}
+
+const {
+  title,
+  description = 'Kittens met liefde grootgebracht',
+  ogImage,
+  ogType = 'website',
+  publishedTime,
+  catteryNaam,
+  jsonLd,
+  siteInstellingen,
+} = Astro.props;
+
+const naam = catteryNaam || siteInstellingen?.cattery_naam || 'Cattery';
+const fullTitle = `${title} — ${naam}`;
+
+// Build LocalBusiness schema from site settings
+const siteUrl = Astro.site?.toString().replace(/\/$/, '') || '';
+const localBusiness: Record<string, any> = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  name: naam,
+  description,
+  url: siteUrl,
+};
+if (siteInstellingen?.contact_email) localBusiness.email = siteInstellingen.contact_email;
+if (siteInstellingen?.telefoon) localBusiness.telephone = siteInstellingen.telefoon;
+if (siteInstellingen?.adres) localBusiness.address = siteInstellingen.adres;
+if (siteInstellingen?.logo) {
+  localBusiness.image = `${siteUrl}/assets/${siteInstellingen.logo.id}?width=600&format=webp`;
+}
+const sameAs = [siteInstellingen?.facebook_url, siteInstellingen?.instagram_url].filter(Boolean);
+if (sameAs.length) localBusiness.sameAs = sameAs;
+---
+
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{fullTitle}</title>
+    <Seo
+      title={fullTitle}
+      description={description}
+      image={ogImage}
+      type={ogType}
+      publishedTime={publishedTime}
+      jsonLd={jsonLd || localBusiness}
+    />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/favicon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body>
+    <a href="#main" class="visually-hidden">Naar hoofdinhoud</a>
+    <Nav catteryNaam={naam} logoId={siteInstellingen?.logo?.id} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer
+      catteryNaam={naam}
+      email={siteInstellingen?.contact_email}
+      telefoon={siteInstellingen?.telefoon}
+      adres={siteInstellingen?.adres}
+      facebookUrl={siteInstellingen?.facebook_url}
+      instagramUrl={siteInstellingen?.instagram_url}
+    />
+    <WalkingKittens />
+  </body>
+</html>

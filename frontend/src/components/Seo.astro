@@ -1,0 +1,28 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedTime?: string;
+  jsonLd?: Record<string, any>;
+}
+
+const { title, description, image, type = 'website', publishedTime, jsonLd } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<link rel="canonical" href={canonicalURL} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={type} />
+<meta property="og:url" content={canonicalURL} />
+{image && <meta property="og:image" content={image} />}
+{publishedTime && <meta property="article:published_time" content={publishedTime} />}
+<meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+{image && <meta name="twitter:image" content={image} />}
+{jsonLd && (
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+)}

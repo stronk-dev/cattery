@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+frontend/node_modules/
+
+# directus data (keep structure, ignore content)
+directus/database/*.db
+directus/uploads/*
+!directus/uploads/.gitkeep
+
+# env
+.env
+
+# build output
+frontend/dist/
+
+# OS
+.DS_Store

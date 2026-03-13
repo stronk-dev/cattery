@@ -1,0 +1,73 @@
+services:
+  directus:
+    image: directus/directus:11.5
+    ports:
+      - "127.0.0.1:8055:8055"
+    volumes:
+      - ./directus/database:/directus/database
+      - ./directus/uploads:/directus/uploads
+      - ./directus/extensions:/directus/extensions
+    environment:
+      SECRET: "${DIRECTUS_SECRET}"
+      ADMIN_EMAIL: "${DIRECTUS_ADMIN_EMAIL}"
+      ADMIN_PASSWORD: "${DIRECTUS_ADMIN_PASSWORD}"
+      DB_CLIENT: sqlite3
+      DB_FILENAME: /directus/database/data.db
+      PUBLIC_URL: "${DIRECTUS_PUBLIC_URL:-http://localhost:8055}"
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: "true"
+      ASSETS_TRANSFORM: "all"
+      ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION: "8192"
+      ASSETS_TRANSFORM_MAX_CONCURRENT: "4"
+      ASSETS_CACHE_TTL: "30d"
+      CACHE_ENABLED: "true"
+      CACHE_AUTO_PURGE: "true"
+      CACHE_TTL: "5m"
+      FILES_MAX_UPLOAD_SIZE: "20mb"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8055/server/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  steward:
+    image: livepeerframeworks/frameworks-steward:v0.2.0-rc1
+    environment:
+      PORT: "18032"
+      SMTP_HOST: "${SMTP_HOST}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      FROM_EMAIL: "${FROM_EMAIL}"
+      TO_EMAIL: "${TO_EMAIL}"
+      FORMS_ALLOWED_ORIGINS: "${FORMS_ALLOWED_ORIGINS:-http://localhost}"
+      TURNSTILE_FORMS_SECRET_KEY: "${TURNSTILE_FORMS_SECRET_KEY:-}"
+      EMAIL_SUBJECT_PREFIX: "${EMAIL_SUBJECT_PREFIX:-Cattery Contactformulier}"
+      CONTACT_SUCCESS_MESSAGE: "Bedankt voor uw bericht! We nemen zo snel mogelijk contact met u op."
+    ports:
+      - "127.0.0.1:18032:18032"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:18032/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./frontend/dist:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - steward
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

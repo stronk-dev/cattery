@@ -1,0 +1,155 @@
+---
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import Gallery from '../../components/Gallery.astro';
+import { fetchKittens, fetchKitten, fetchSiteInstellingen, getImageURL } from '../../lib/directus';
+import type { Kitten } from '../../lib/types';
+
+export async function getStaticPaths() {
+  let kittens: Kitten[] = [];
+  try { kittens = await fetchKittens(); } catch {}
+  return kittens.map(k => ({ params: { slug: k.slug } }));
+}
+
+const { slug } = Astro.params;
+let site, kitten: Kitten;
+try {
+  [site, kitten] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchKitten(slug!),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  kitten = null as any;
+}
+
+const geslachtLabel = kitten?.geslacht === 'poes' ? 'Poes' : 'Kater';
+const galleryImages = kitten?.fotos?.map(f => f.directus_files_id).filter(Boolean) || [];
+---
+
+<Base
+  title={kitten?.naam || 'Kitten'}
+  siteInstellingen={site}
+  description={kitten ? `${kitten.naam} — ${geslachtLabel}${kitten.kleur ? ', ' + kitten.kleur : ''}` : undefined}
+  ogImage={kitten?.foto ? getImageURL(kitten.foto.id, { width: 1200, format: 'webp' }) : undefined}
+  jsonLd={kitten ? {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: kitten.naam,
+    description: `${kitten.naam} — ${geslachtLabel}${kitten.kleur ? ', ' + kitten.kleur : ''}`,
+    image: kitten.foto ? getImageURL(kitten.foto.id, { width: 1200, format: 'webp' }) : undefined,
+  } : undefined}
+>
+  {kitten ? (
+    <section class="section">
+      <div class="container">
+        <p class="breadcrumb"><a href="/kittens">&larr; Kittens</a></p>
+
+        <div class="kitten-detail">
+          {kitten.foto && (
+            <button class="hero-expand" data-gallery-index="0" type="button" aria-label="Foto vergroten">
+              <img
+                class="kitten-hero"
+                src={getImageURL(kitten.foto.id, { width: 800, format: 'webp', quality: 85 })}
+                alt={kitten.foto.description || kitten.naam}
+                width="800"
+                fetchpriority="high"
+              />
+            </button>
+          )}
+
+          <div class="kitten-info">
+            <h1>{kitten.naam}</h1>
+            <StatusBadge status={kitten.status} />
+
+            <table class="info-table">
+              <tbody>
+                <tr><th>Geslacht</th><td>{geslachtLabel}</td></tr>
+                {kitten.kleur && <tr><th>Kleur</th><td>{kitten.kleur}</td></tr>}
+                {kitten.nest && (
+                  <tr><th>Nest</th><td><a href={`/nesten/${kitten.nest.slug}`}>{kitten.nest.naam}</a></td></tr>
+                )}
+                {kitten.nest?.moeder && (
+                  <tr><th>Moeder</th><td><a href={`/onze-katten/${kitten.nest.moeder.slug}`}>{kitten.nest.moeder.naam}</a></td></tr>
+                )}
+                {kitten.nest?.vader && (
+                  <tr><th>Vader</th><td><a href={`/onze-katten/${kitten.nest.vader.slug}`}>{kitten.nest.vader.naam}</a></td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {kitten.beschrijving && (
+          <div class="rich-text" style="margin-top: var(--space-xl);" set:html={kitten.beschrijving} />
+        )}
+
+        {(kitten.foto || galleryImages.length > 0) && (
+          <div style="margin-top: var(--space-xl);">
+            {galleryImages.length > 0 && <h2 style="margin-bottom: var(--space-md);">Foto's</h2>}
+            <Gallery images={galleryImages} heroImage={kitten.foto} />
+          </div>
+        )}
+
+        {kitten.status === 'beschikbaar' && (
+          <div style="margin-top: var(--space-xl); text-align: center;">
+            <a href="/contact?interesse=Kitten" class="btn">Interesse? Neem contact op</a>
+          </div>
+        )}
+      </div>
+    </section>
+  ) : (
+    <section class="section">
+      <div class="container">
+        <p>Kitten niet gevonden.</p>
+        <a href="/kittens">&larr; Terug naar kittens</a>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .breadcrumb {
+    margin-bottom: var(--space-lg);
+    font-size: 0.9rem;
+  }
+
+  .kitten-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .kitten-detail { grid-template-columns: 1fr; }
+  }
+
+  .kitten-hero {
+    border-radius: var(--radius-lg);
+    width: 100%;
+  }
+
+  .kitten-info h1 {
+    margin-bottom: var(--space-sm);
+  }
+
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--space-md);
+  }
+
+  .info-table th,
+  .info-table td {
+    text-align: left;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .info-table th {
+    font-weight: 500;
+    color: var(--color-text-muted);
+    width: 40%;
+  }
+</style>

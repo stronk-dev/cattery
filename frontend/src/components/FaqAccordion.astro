@@ -1,0 +1,103 @@
+---
+import type { VeelgesteldeVraag } from '../lib/types';
+
+interface Props {
+  vragen: VeelgesteldeVraag[];
+}
+
+const { vragen } = Astro.props;
+
+const categorieLabels: Record<string, string> = {
+  algemeen: 'Algemeen',
+  adoptie: 'Adoptie',
+  gezondheid: 'Gezondheid',
+  prijzen: 'Prijzen',
+  ras_informatie: 'Ras Informatie',
+};
+
+const categoryOrder = ['algemeen', 'adoptie', 'gezondheid', 'prijzen', 'ras_informatie'];
+
+const grouped = vragen.reduce((acc, v) => {
+  if (!acc[v.categorie]) acc[v.categorie] = [];
+  acc[v.categorie].push(v);
+  return acc;
+}, {} as Record<string, VeelgesteldeVraag[]>);
+
+const sortedCategories = categoryOrder.filter(c => grouped[c]);
+---
+
+<div class="faq">
+  {sortedCategories.map(cat => (
+    <div class="faq-category">
+      <h3 class="faq-category-title">{categorieLabels[cat] || cat}</h3>
+      {grouped[cat].map(v => (
+        <details class="faq-item">
+          <summary class="faq-question">{v.vraag}</summary>
+          <div class="faq-answer rich-text" set:html={v.antwoord} />
+        </details>
+      ))}
+    </div>
+  ))}
+</div>
+
+<style>
+  .faq {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+  }
+
+  .faq-category-title {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-xs);
+    border-bottom: 2px solid var(--color-accent);
+  }
+
+  .faq-item {
+    border-bottom: 1px solid var(--color-border, rgba(0,0,0,0.08));
+  }
+
+  .faq-question {
+    cursor: pointer;
+    padding: var(--space-md) 0;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+
+  .faq-question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-question::after {
+    content: '+';
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+
+  .faq-item[open] .faq-question::after {
+    content: '\2212';
+  }
+
+  .faq-answer {
+    padding: 0 0 var(--space-md);
+    color: var(--color-text-muted);
+    line-height: 1.7;
+  }
+
+  .faq-question:hover {
+    color: var(--color-accent);
+  }
+</style>

@@ -1,0 +1,69 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Niet Gevonden">
+  <section class="section">
+    <div class="container not-found">
+      <div class="not-found-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M8 15c1.333-1.333 2.667-2 4-2s2.667.667 4 2" />
+          <line x1="9" y1="9" x2="9.01" y2="9" stroke-width="2.5" />
+          <line x1="15" y1="9" x2="15.01" y2="9" stroke-width="2.5" />
+        </svg>
+      </div>
+      <h1>404</h1>
+      <p class="not-found-title">Oeps! Deze pagina is weggelopen...</p>
+      <p class="not-found-text">
+        Net als een kitten, soms verdwijnen dingen. Maar geen zorgen, we helpen u terug.
+      </p>
+      <div class="not-found-actions">
+        <a href="/" class="btn">Terug naar home</a>
+        <a href="/contact" class="btn btn-outline">Neem contact op</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .not-found {
+    text-align: center;
+    padding-block: var(--space-2xl);
+    max-width: 500px;
+    margin-inline: auto;
+  }
+
+  .not-found-icon {
+    color: var(--color-accent-light);
+    margin-bottom: var(--space-lg);
+  }
+
+  .not-found h1 {
+    font-size: clamp(4rem, 10vw, 7rem);
+    color: var(--color-accent-light);
+    line-height: 1;
+    margin-bottom: var(--space-md);
+  }
+
+  .not-found-title {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+  }
+
+  .not-found-text {
+    color: var(--color-text-muted);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin-bottom: var(--space-xl);
+  }
+
+  .not-found-actions {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+</style>

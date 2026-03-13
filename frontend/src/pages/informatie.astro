@@ -1,0 +1,132 @@
+---
+import Base from '../layouts/Base.astro';
+import FaqAccordion from '../components/FaqAccordion.astro';
+import { fetchPagina, fetchVeelgesteldeVragen, fetchSiteInstellingen, getImageURL } from '../lib/directus';
+
+let site, pagina, vragen;
+try {
+  [site, pagina, vragen] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchPagina('informatie'),
+    fetchVeelgesteldeVragen(),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  pagina = null;
+  vragen = [];
+}
+---
+
+<Base title="Informatie" siteInstellingen={site}>
+  <section class="section">
+    <div class="container">
+      <div class="page-header">
+        <h1>{pagina?.titel || 'Informatie'}</h1>
+        <p class="page-intro">
+          Alles over het adopteren van een kitten, onze werkwijze en veelgestelde vragen.
+        </p>
+      </div>
+
+      {pagina ? (
+        <div class="info-content">
+          {pagina.afbeelding && (
+            <img
+              class="info-foto"
+              src={getImageURL(pagina.afbeelding.id, { width: 600, format: 'webp', quality: 80 })}
+              alt={pagina.afbeelding.title || 'Informatie'}
+              width="600"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+          <div class="rich-text" set:html={pagina.inhoud} />
+          <div class="info-cta">
+            <a href="/contact" class="btn">Neem contact op</a>
+          </div>
+        </div>
+      ) : (
+        <p class="empty-state">
+          Maak een pagina aan in Directus met de slug "informatie" om hier het adoptieproces, prijzen en gezondheidsgaranties te beschrijven.
+        </p>
+      )}
+    </div>
+  </section>
+
+  {vragen.length > 0 && (
+    <section class="section" style="background: var(--color-bg-alt)">
+      <div class="container">
+        <h2 class="section-title text-center">Veelgestelde Vragen</h2>
+        <div class="faq-wrapper">
+          <FaqAccordion vragen={vragen} />
+        </div>
+        <div class="faq-footer">
+          <p>Staat uw vraag er niet bij?</p>
+          <a href="/contact" class="btn btn-outline">Neem contact op</a>
+        </div>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .page-header {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    max-width: 650px;
+    margin-inline: auto;
+  }
+
+  .page-header h1 {
+    margin-bottom: var(--space-md);
+  }
+
+  .page-intro {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .info-foto {
+    float: right;
+    max-width: 50%;
+    margin-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  .info-cta {
+    margin-top: var(--space-xl);
+    text-align: center;
+    clear: both;
+  }
+
+  .faq-wrapper {
+    max-width: 800px;
+    margin-inline: auto;
+  }
+
+  .faq-footer {
+    text-align: center;
+    margin-top: var(--space-xl);
+    color: var(--color-text-muted);
+  }
+
+  .faq-footer p {
+    margin-bottom: var(--space-md);
+  }
+
+  .empty-state {
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    .info-foto {
+      float: none;
+      max-width: 100%;
+      margin-left: 0;
+      margin-bottom: var(--space-lg);
+    }
+  }
+</style>

@@ -1,0 +1,318 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import CatCard from '../components/CatCard.astro';
+import KittenCard from '../components/KittenCard.astro';
+import BlogCard from '../components/BlogCard.astro';
+import ErvaringCard from '../components/ErvaringCard.astro';
+import { fetchKatten, fetchBeschikbareKittens, fetchBlogBerichten, fetchErvaringen, fetchSiteInstellingen, getImageURL } from '../lib/directus';
+
+let site, katten, kittens, blogPosts, ervaringen;
+try {
+  [site, katten, kittens, blogPosts, ervaringen] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchKatten().then(k => k.slice(0, 3)),
+    fetchBeschikbareKittens().then(k => k.slice(0, 4)),
+    fetchBlogBerichten().then(b => b.slice(0, 3)),
+    fetchErvaringen().then(e => e.slice(0, 3)),
+  ]);
+} catch {
+  // Directus not available — render with empty data
+  site = { cattery_naam: 'Cattery', ondertitel: 'Kittens met liefde grootgebracht' } as any;
+  katten = [];
+  kittens = [];
+  blogPosts = [];
+  ervaringen = [];
+}
+
+const heroImage = site.hero_afbeelding
+  ? getImageURL(site.hero_afbeelding.id, { width: 1920, format: 'webp', quality: 80 })
+  : undefined;
+---
+
+<Base title="Home" siteInstellingen={site} ogImage={heroImage}>
+  <!-- 1. Hero -->
+  <Hero
+    title={`Welkom bij ${site.cattery_naam || 'de Cattery'}`}
+    subtitle={site.ondertitel || 'Kittens met liefde grootgebracht'}
+    backgroundImage={heroImage}
+    fullHeight={true}
+  >
+    <div class="hero-actions">
+      <a href="/kittens" class="btn">Ontdek onze kittens</a>
+      <a href="/over-ons" class="btn btn-outline btn-outline-light">Over ons</a>
+    </div>
+  </Hero>
+
+  <!-- 2. Intro section -->
+  <section class="section">
+    <div class="container intro-section">
+      <h2 class="intro-title">Welkom bij {site.cattery_naam || 'de Cattery'}</h2>
+      <p class="intro-text">
+        Onze passie is het fokken van gezonde, goed gesocialiseerde katten met een prachtig karakter.
+        Elke kitten groeit op in een huiselijke omgeving, omringd door liefde en aandacht.
+        Wij selecteren onze fokdieren zorgvuldig op gezondheid, karakter en rasstandaard om u de best mogelijke kitten te kunnen bieden.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3. Onze katten -->
+  {katten.length > 0 && (
+    <section class="section" style="background: var(--color-bg-alt)">
+      <div class="container">
+        <h2 class="section-title text-center">Onze Katten</h2>
+        <p class="section-subtitle">Maak kennis met onze prachtige fokkatten</p>
+        <div class="grid grid-3">
+          {katten.map(kat => <CatCard kat={kat} />)}
+        </div>
+        <p class="section-cta">
+          <a href="/onze-katten" class="btn">Alle katten bekijken</a>
+        </p>
+      </div>
+    </section>
+  )}
+
+  <!-- 4. Beschikbare kittens -->
+  {kittens.length > 0 && (
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title text-center">Beschikbare Kittens</h2>
+        <p class="section-subtitle">Op zoek naar een nieuw gezinslid?</p>
+        <div class="grid grid-3">
+          {kittens.map(kitten => <KittenCard kitten={kitten} />)}
+        </div>
+        <p class="section-cta">
+          <a href="/kittens" class="btn">Alle kittens bekijken</a>
+        </p>
+      </div>
+    </section>
+  )}
+
+  <!-- 5. Waarom kiezen voor ons? -->
+  <section class="section" style="background: var(--color-bg-alt)">
+    <div class="container">
+      <h2 class="section-title text-center">Waarom kiezen voor ons?</h2>
+      <p class="section-subtitle">Wij zetten ons in voor het welzijn van elke kat en kitten</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 12l2 2 4-4" />
+              <path d="M12 3c-1.2 0-2.4.6-3 1.5A3.5 3.5 0 0 0 5 8c0 4 3.5 7.5 7 10.5C15.5 15.5 19 12 19 8a3.5 3.5 0 0 0-4-3.5C14.4 3.6 13.2 3 12 3z" />
+            </svg>
+          </div>
+          <h3 class="feature-title">Gezondheid Voorop</h3>
+          <p class="feature-description">Al onze fokdieren zijn uitgebreid getest op erfelijke aandoeningen. Wij werken alleen met gezonde, geteste katten voor het welzijn van elke kitten.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </div>
+          <h3 class="feature-title">Met Liefde Grootgebracht</h3>
+          <p class="feature-description">Onze kittens groeien op in een warme, huiselijke omgeving. Ze worden vanaf jonge leeftijd gesocialiseerd met kinderen, andere dieren en alledaagse geluiden.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <h3 class="feature-title">Levenslange Begeleiding</h3>
+          <p class="feature-description">Onze zorg stopt niet bij de overdracht. Wij bieden levenslange begeleiding en staan altijd klaar voor advies over voeding, gezondheid en gedrag.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Ervaringen -->
+  {ervaringen.length > 0 && (
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title text-center">Blije Gezinnen</h2>
+        <p class="section-subtitle">Wat onze adoptiegezinnen zeggen</p>
+        <div class="grid grid-3">
+          {ervaringen.map(e => <ErvaringCard ervaring={e} />)}
+        </div>
+        <p class="section-cta">
+          <a href="/ervaringen" class="btn btn-outline">Alle ervaringen</a>
+        </p>
+      </div>
+    </section>
+  )}
+
+  <!-- 7. Blog -->
+  {blogPosts.length > 0 && (
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title text-center">Laatste Nieuws</h2>
+        <p class="section-subtitle">Blijf op de hoogte van onze cattery</p>
+        <div class="grid grid-3">
+          {blogPosts.map(post => <BlogCard post={post} />)}
+        </div>
+        <p class="section-cta">
+          <a href="/blog" class="btn btn-outline">Alle berichten</a>
+        </p>
+      </div>
+    </section>
+  )}
+
+  <!-- 7. CTA banner -->
+  <section class="cta-banner">
+    <div class="container cta-banner-inner">
+      <h2 class="cta-banner-title">Op zoek naar een kitten?</h2>
+      <p class="cta-banner-text">Neem contact met ons op en ontdek of er een kitten is die bij u past.</p>
+      <a href="/contact" class="btn cta-banner-btn">Neem contact op</a>
+    </div>
+  </section>
+
+  <!-- Empty state when no CMS data -->
+  {katten.length === 0 && kittens.length === 0 && blogPosts.length === 0 && (
+    <section class="section">
+      <div class="container" style="text-align: center; padding-block: var(--space-2xl);">
+        <p style="color: var(--color-text-muted);">
+          Welkom! De website wordt momenteel ingericht. Voeg katten, kittens en berichten toe via het <a href="/admin" target="_blank">admin paneel</a>.
+        </p>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  /* Hero actions */
+  .hero-actions {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    flex-wrap: wrap;
+  }
+
+  .btn-outline-light {
+    border-color: white;
+    color: white;
+  }
+
+  .btn-outline-light:hover {
+    background: white;
+    color: var(--color-accent);
+    border-color: white;
+  }
+
+  /* Intro section */
+  .intro-section {
+    text-align: center;
+    max-width: 750px;
+  }
+
+  .intro-title {
+    font-family: var(--font-heading);
+    margin-bottom: var(--space-md);
+    color: var(--color-text);
+  }
+
+  .intro-text {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--color-text-muted);
+  }
+
+  /* Section common */
+  .section-subtitle {
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 1.05rem;
+    margin-top: calc(-1 * var(--space-md));
+    margin-bottom: var(--space-xl);
+  }
+
+  .section-cta {
+    margin-top: var(--space-xl);
+    text-align: center;
+  }
+
+  /* Features grid */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: var(--space-lg);
+  }
+
+  .feature-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl) var(--space-lg);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-smooth);
+  }
+
+  .feature-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-4px);
+  }
+
+  .feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--color-bg-alt);
+    color: var(--color-accent);
+    margin-bottom: var(--space-md);
+  }
+
+  .feature-title {
+    font-size: 1.2rem;
+    margin-bottom: var(--space-sm);
+    color: var(--color-text);
+  }
+
+  .feature-description {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  /* CTA banner */
+  .cta-banner {
+    background: var(--color-accent);
+    padding-block: var(--space-2xl);
+  }
+
+  .cta-banner-inner {
+    text-align: center;
+  }
+
+  .cta-banner-title {
+    font-family: var(--font-heading);
+    font-size: clamp(1.5rem, 3vw + 0.5rem, 2.25rem);
+    color: white;
+    margin-bottom: var(--space-sm);
+  }
+
+  .cta-banner-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    margin-bottom: var(--space-lg);
+    max-width: 45ch;
+    margin-inline: auto;
+  }
+
+  .cta-banner-btn {
+    background: white;
+    color: var(--color-accent);
+    border-color: white;
+  }
+
+  .cta-banner-btn:hover {
+    background: var(--color-bg);
+    color: var(--color-accent-hover);
+    border-color: var(--color-bg);
+  }
+</style>

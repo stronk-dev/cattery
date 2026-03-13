@@ -1,0 +1,111 @@
+---
+import Base from '../../layouts/Base.astro';
+import Gallery from '../../components/Gallery.astro';
+import { fetchBlogBerichten, fetchBlogBericht, fetchSiteInstellingen, getImageURL } from '../../lib/directus';
+import type { BlogBericht } from '../../lib/types';
+
+export async function getStaticPaths() {
+  let posts: BlogBericht[] = [];
+  try { posts = await fetchBlogBerichten(); } catch {}
+  return posts.map(p => ({ params: { slug: p.slug } }));
+}
+
+const { slug } = Astro.params;
+let site, post: BlogBericht;
+try {
+  [site, post] = await Promise.all([
+    fetchSiteInstellingen(),
+    fetchBlogBericht(slug!),
+  ]);
+} catch {
+  site = { cattery_naam: 'Cattery' } as any;
+  post = null as any;
+}
+
+const datum = post?.gepubliceerd_op
+  ? new Date(post.gepubliceerd_op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
+const galleryImages = post?.fotos?.map(f => f.directus_files_id).filter(Boolean) || [];
+---
+
+<Base
+  title={post?.titel || 'Bericht'}
+  siteInstellingen={site}
+  description={post?.samenvatting}
+  ogType="article"
+  publishedTime={post?.gepubliceerd_op}
+  ogImage={post?.afbeelding ? getImageURL(post.afbeelding.id, { width: 1200, format: 'webp' }) : undefined}
+  jsonLd={post ? {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.titel,
+    description: post.samenvatting,
+    datePublished: post.gepubliceerd_op,
+    image: post.afbeelding ? getImageURL(post.afbeelding.id, { width: 1200, format: 'webp' }) : undefined,
+    publisher: { '@type': 'Organization', name: site.cattery_naam || 'Cattery' },
+  } : undefined}
+>
+  {post ? (
+    <article class="section">
+      <div class="container blog-article">
+        <p class="breadcrumb"><a href="/blog">&larr; Blog</a></p>
+
+        {datum && <time class="blog-date" datetime={post.gepubliceerd_op}>{datum}</time>}
+        <h1>{post.titel}</h1>
+
+        {post.afbeelding && (
+          <img
+            class="blog-hero"
+            src={getImageURL(post.afbeelding.id, { width: 1000, format: 'webp', quality: 85 })}
+            alt={post.afbeelding.description || post.titel}
+            width="1000"
+            fetchpriority="high"
+          />
+        )}
+
+        <div class="rich-text" set:html={post.inhoud} />
+
+        {(post.afbeelding || galleryImages.length > 0) && (
+          <div style="margin-top: var(--space-xl);">
+            {galleryImages.length > 0 && <h2 style="margin-bottom: var(--space-md);">Foto's</h2>}
+            <Gallery images={galleryImages} heroImage={post.afbeelding} />
+          </div>
+        )}
+      </div>
+    </article>
+  ) : (
+    <section class="section">
+      <div class="container">
+        <p>Bericht niet gevonden.</p>
+        <a href="/blog">&larr; Terug naar blog</a>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .blog-article {
+    max-width: 750px;
+  }
+
+  .breadcrumb {
+    margin-bottom: var(--space-lg);
+    font-size: 0.9rem;
+  }
+
+  .blog-date {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+  }
+
+  .blog-article h1 {
+    margin-top: var(--space-xs);
+    margin-bottom: var(--space-lg);
+  }
+
+  .blog-hero {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-xl);
+  }
+</style>

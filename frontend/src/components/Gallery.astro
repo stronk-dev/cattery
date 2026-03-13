@@ -1,0 +1,162 @@
+---
+import { getImageURL, getDirectusURL } from '../lib/directus';
+import type { DirectusFile } from '../lib/types';
+
+interface Props {
+  images: DirectusFile[];
+  heroImage?: DirectusFile;
+}
+
+const { images, heroImage } = Astro.props;
+const directusBaseUrl = getDirectusURL('');
+const allImages = heroImage ? [heroImage, ...images] : images;
+---
+
+{allImages.length > 0 && (
+  <div class="gallery">
+    {images.length > 0 && (
+      <div class="gallery-grid">
+        {images.map((img, i) => {
+          const index = heroImage ? i + 1 : i;
+          return (
+            <button class="gallery-thumb" data-gallery-index={index} type="button" aria-label={`Foto ${i + 1} vergroten`}>
+              <img
+                src={getImageURL(img.id, { width: 300, height: 300, fit: 'cover', format: 'webp', quality: 75 })}
+                alt={img.description || img.title || `Foto ${i + 1}`}
+                width="300"
+                height="300"
+                loading="lazy"
+                decoding="async"
+              />
+            </button>
+          );
+        })}
+      </div>
+    )}
+
+    <dialog class="gallery-dialog" aria-label="Foto vergroting">
+      <img class="gallery-full" src="" alt="" />
+      <button class="gallery-close" type="button" aria-label="Sluiten">&times;</button>
+      <button class="gallery-prev" type="button" aria-label="Vorige foto">&lsaquo;</button>
+      <button class="gallery-next" type="button" aria-label="Volgende foto">&rsaquo;</button>
+    </dialog>
+  </div>
+)}
+
+<script define:vars={{ imageData: allImages.map(img => ({ id: img.id, alt: img.description || img.title || '' })), directusBaseUrl }}>
+  const dialog = document.querySelector('.gallery-dialog');
+  const fullImg = dialog?.querySelector('.gallery-full');
+  if (!dialog || !fullImg) return;
+
+  let current = 0;
+
+  function show(index) {
+    current = ((index % imageData.length) + imageData.length) % imageData.length;
+    const img = imageData[current];
+    fullImg.src = `${directusBaseUrl}/assets/${img.id}?width=1200&format=webp&quality=85`;
+    fullImg.alt = img.alt;
+    dialog.showModal();
+  }
+
+  document.querySelectorAll('[data-gallery-index]').forEach(btn => {
+    btn.addEventListener('click', () => show(parseInt(btn.dataset.galleryIndex)));
+  });
+
+  dialog.querySelector('.gallery-close')?.addEventListener('click', () => dialog.close());
+  dialog.querySelector('.gallery-prev')?.addEventListener('click', () => show(current - 1));
+  dialog.querySelector('.gallery-next')?.addEventListener('click', () => show(current + 1));
+
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!dialog.open) return;
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
+</script>
+
+<style>
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--space-sm);
+  }
+
+  .gallery-thumb {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .gallery-thumb img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    transition: transform 0.2s;
+  }
+
+  .gallery-thumb:hover img {
+    transform: scale(1.05);
+  }
+
+  .gallery-dialog {
+    border: none;
+    background: rgba(0, 0, 0, 0.9);
+    max-width: 95vw;
+    max-height: 95vh;
+    padding: 0;
+    position: fixed;
+    inset: 0;
+    margin: auto;
+  }
+
+  .gallery-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.8);
+  }
+
+  .gallery-full {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .gallery-close,
+  .gallery-prev,
+  .gallery-next {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+  }
+
+  .gallery-close {
+    top: 1rem;
+    right: 1rem;
+    font-size: 2.5rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .gallery-prev {
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.5rem 0.75rem;
+  }
+
+  .gallery-next {
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.5rem 0.75rem;
+  }
+</style>

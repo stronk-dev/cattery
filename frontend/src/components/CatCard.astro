@@ -1,0 +1,105 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import { getImageURL } from '../lib/directus';
+import type { Kat } from '../lib/types';
+
+interface Props {
+  kat: Kat;
+}
+
+const { kat } = Astro.props;
+const rolLabel = kat.rol === 'fokpoes' ? 'Fokpoes' : 'Dekkater';
+---
+
+<a href={`/onze-katten/${kat.slug}`} class="cat-card">
+  <div class="cat-card-image-wrapper">
+    {kat.foto && (
+      <img
+        src={getImageURL(kat.foto.id, { width: 400, height: 400, fit: 'cover', format: 'webp', quality: 80 })}
+        alt={kat.foto.description || kat.naam}
+        width="400"
+        height="400"
+        loading="lazy"
+        decoding="async"
+      />
+    )}
+    <div class="cat-card-name-overlay">
+      <h3 class="cat-card-name">{kat.naam}</h3>
+    </div>
+    {kat.status === 'gepensioneerd' && (
+      <div class="cat-card-badge">
+        <StatusBadge status="gepensioneerd" />
+      </div>
+    )}
+  </div>
+  <div class="cat-card-body">
+    <p class="cat-card-meta">{rolLabel} &middot; {kat.kleur}</p>
+  </div>
+</a>
+
+<style>
+  .cat-card {
+    display: block;
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--color-text);
+  }
+
+  .cat-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  .cat-card-image-wrapper {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cat-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .cat-card:hover img {
+    transform: scale(1.05);
+  }
+
+  .cat-card-name-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--space-lg) var(--space-md) var(--space-md);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 100%);
+    pointer-events: none;
+  }
+
+  .cat-card-name {
+    font-size: 1.25rem;
+    color: white;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    margin: 0;
+  }
+
+  .cat-card-badge {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+  }
+
+  .cat-card-body {
+    padding: var(--space-sm) var(--space-md) var(--space-md);
+  }
+
+  .cat-card-meta {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+  }
+</style>
