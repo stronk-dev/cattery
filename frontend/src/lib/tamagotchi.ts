@@ -11,7 +11,7 @@ export interface TamagotchiCat {
   sourceId: number;
   slug?: string;
   name: string;
-  personality: "lazy" | "playful" | "curious" | "sassy";
+  personality: "lazy" | "playful" | "curious" | "sassy" | "shy" | "chaotic";
   furIndex: number;
   stage: "kitten" | "adult" | "elder";
   hunger: number;
@@ -50,6 +50,7 @@ export interface GameState {
   recentActions: CareActionLog[];
   family: FamilyRelation[];
   bonds: Bond[];
+  trust: number;
 }
 
 type CareAction = "feed" | "pet" | "play" | "groom";
@@ -242,6 +243,10 @@ class TamagotchiClient {
 
   getVisitorId(): string {
     return this.visitorId;
+  }
+
+  getTrust(): number {
+    return this.state?.trust || 0;
   }
 
   on(event: GameEventType, callback: GameEventCallback): void {

@@ -45,7 +45,7 @@ const heroImage = site.hero_afbeelding
   </Hero>
 
   <!-- 2. Intro section -->
-  <section class="section">
+  <section class="section select-none">
     <div class="container intro-section">
       <h2 class="intro-title">Welkom bij {site.cattery_naam || 'de Cattery'}</h2>
       <p class="intro-text">
@@ -58,7 +58,7 @@ const heroImage = site.hero_afbeelding
 
   <!-- 3. Onze katten -->
   {katten.length > 0 && (
-    <section class="section" style="background: var(--color-bg-alt)">
+    <section class="section select-none" style="background: var(--color-bg-alt)">
       <div class="container">
         <h2 class="section-title text-center">Onze Katten</h2>
         <p class="section-subtitle">Maak kennis met onze prachtige fokkatten</p>
@@ -74,7 +74,7 @@ const heroImage = site.hero_afbeelding
 
   <!-- 4. Beschikbare kittens -->
   {kittens.length > 0 && (
-    <section class="section">
+    <section class="section select-none">
       <div class="container">
         <h2 class="section-title text-center">Beschikbare Kittens</h2>
         <p class="section-subtitle">Op zoek naar een nieuw gezinslid?</p>
@@ -89,7 +89,7 @@ const heroImage = site.hero_afbeelding
   )}
 
   <!-- 5. Waarom kiezen voor ons? -->
-  <section class="section" style="background: var(--color-bg-alt)">
+  <section class="section select-none" style="background: var(--color-bg-alt)">
     <div class="container">
       <h2 class="section-title text-center">Waarom kiezen voor ons?</h2>
       <p class="section-subtitle">Wij zetten ons in voor het welzijn van elke kat en kitten</p>
@@ -131,7 +131,7 @@ const heroImage = site.hero_afbeelding
 
   <!-- 6. Ervaringen -->
   {ervaringen.length > 0 && (
-    <section class="section">
+    <section class="section select-none">
       <div class="container">
         <h2 class="section-title text-center">Blije Gezinnen</h2>
         <p class="section-subtitle">Wat onze adoptiegezinnen zeggen</p>
@@ -147,7 +147,7 @@ const heroImage = site.hero_afbeelding
 
   <!-- 7. Blog -->
   {blogPosts.length > 0 && (
-    <section class="section">
+    <section class="section select-none">
       <div class="container">
         <h2 class="section-title text-center">Laatste Nieuws</h2>
         <p class="section-subtitle">Blijf op de hoogte van onze cattery</p>
@@ -162,7 +162,7 @@ const heroImage = site.hero_afbeelding
   )}
 
   <!-- 7. CTA banner -->
-  <section class="cta-banner">
+  <section class="cta-banner select-none">
     <div class="container cta-banner-inner">
       <h2 class="cta-banner-title">Op zoek naar een kitten?</h2>
       <p class="cta-banner-text">Neem contact met ons op en ontdek of er een kitten is die bij u past.</p>

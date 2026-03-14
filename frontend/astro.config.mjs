@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import { loadEnv } from 'vite';
 import sitemap from '@astrojs/sitemap';
+import icon from 'astro-icon';
 
 const env = loadEnv(process.env.NODE_ENV || 'production', '..', '');
 
@@ -9,7 +10,7 @@ const env = loadEnv(process.env.NODE_ENV || 'production', '..', '');
 export default defineConfig({
   output: 'static',
   site: env.SITE_URL || 'http://localhost:4321',
-  integrations: [sitemap()],
+  integrations: [sitemap(), icon()],
   vite: {
     envDir: '..',
   },

@@ -3,6 +3,7 @@ import {
   updateCatStats,
   logCareAction,
   incrementBond,
+  incrementTrust,
 } from "./db";
 import { broadcast, send, type WSData } from "./broadcast";
 import type { CareAction, CareSourceType, CareVariant, ServerMessage } from "./types";
@@ -81,6 +82,11 @@ export function handleCareAction(
       sourceCatId: source?.sourceCatId,
       sourceCatName: source?.sourceCatName,
     });
+
+    // Increment visitor trust
+    if (sourceType === "visitor") {
+      incrementTrust(ws.data.visitorId, action);
+    }
 
     // Update bonds for co-present cats
     for (const otherId of onScreen) {

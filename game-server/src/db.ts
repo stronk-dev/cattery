@@ -12,7 +12,7 @@ import type {
   DirectusNest,
 } from "./types";
 
-const PERSONALITIES: Personality[] = ["lazy", "playful", "curious", "sassy"];
+const PERSONALITIES: Personality[] = ["lazy", "playful", "curious", "sassy", "shy", "chaotic"];
 const FUR_COUNT = 10;
 
 let db: Database;
@@ -65,6 +65,13 @@ export function initDb(path: string): Database {
     );
 
     CREATE INDEX IF NOT EXISTS idx_care_actions_created ON care_actions(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS visitors (
+      id TEXT PRIMARY KEY,
+      trust REAL NOT NULL DEFAULT 0,
+      last_seen INTEGER NOT NULL,
+      first_seen INTEGER NOT NULL
+    );
   `);
 
   ensureColumn("care_actions", "source_type", "TEXT NOT NULL DEFAULT 'visitor'");
@@ -284,6 +291,46 @@ export function getVisitorActionsToday(visitorId: string): number {
     .query("SELECT COUNT(*) as count FROM care_actions WHERE visitor_id = ? AND created_at >= ?")
     .get(visitorId, ts) as any;
   return row?.count || 0;
+}
+
+// --- Trust system ---
+
+const TRUST_PER_ACTION: Record<string, number> = {
+  feed: 2,
+  pet: 1,
+  play: 3,
+  groom: 1,
+};
+
+export function getVisitorTrust(visitorId: string): number {
+  const now = Math.floor(Date.now() / 1000);
+  const row = db.query("SELECT trust, last_seen FROM visitors WHERE id = ?").get(visitorId) as any;
+  if (!row) return 0;
+  // Decay: ~1 point per day of absence
+  const daysSinceSeen = (now - row.last_seen) / 86400;
+  return Math.max(0, row.trust - daysSinceSeen);
+}
+
+export function touchVisitor(visitorId: string): void {
+  const now = Math.floor(Date.now() / 1000);
+  db.query(`
+    INSERT INTO visitors (id, trust, last_seen, first_seen)
+    VALUES (?, 0, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET last_seen = ?
+  `).run(visitorId, now, now, now);
+}
+
+export function incrementTrust(visitorId: string, action: string): void {
+  const amount = TRUST_PER_ACTION[action] || 0;
+  if (amount <= 0) return;
+  const now = Math.floor(Date.now() / 1000);
+  db.query(`
+    INSERT INTO visitors (id, trust, last_seen, first_seen)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      trust = MIN(100, MAX(0, visitors.trust - ((? - visitors.last_seen) / 86400.0) + ?)),
+      last_seen = ?
+  `).run(visitorId, amount, now, now, now, amount, now);
 }
 
 function rowToCatState(row: any): CatState {

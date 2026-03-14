@@ -1,4 +1,4 @@
-export type Personality = "lazy" | "playful" | "curious" | "sassy";
+export type Personality = "lazy" | "playful" | "curious" | "sassy" | "shy" | "chaotic";
 export type Stage = "kitten" | "adult" | "elder";
 export type CareAction = "feed" | "pet" | "play" | "groom" | "rest";
 export type CareSourceType = "visitor" | "cat" | "system";
@@ -70,6 +70,7 @@ export type ServerMessage =
       recentActions: CareActionLog[];
       family: FamilyRelation[];
       bonds: Bond[];
+      trust: number;
     }
   | {
       type: "care_result";

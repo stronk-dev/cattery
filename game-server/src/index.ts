@@ -1,4 +1,4 @@
-import { initDb, syncFromDirectus, getAllCats, getRecentActions, getAllFamily, getAllBonds } from "./db";
+import { initDb, syncFromDirectus, getAllCats, getRecentActions, getAllFamily, getAllBonds, getVisitorTrust, touchVisitor } from "./db";
 import { addClient, removeClient, send, type WSData } from "./broadcast";
 import { startTickLoop } from "./tick";
 import { handleCareAction } from "./actions";
@@ -33,14 +33,15 @@ await syncWithRetry();
 // Start stat decay loop
 startTickLoop();
 
-// Build full state message
-function getStateMessage(): ServerMessage {
+// Build full state message (trust is per-visitor, added in websocket open)
+function getStateMessage(visitorId?: string): ServerMessage {
   return {
     type: "state",
     cats: getAllCats(),
     recentActions: getRecentActions(),
     family: getAllFamily(),
     bonds: getAllBonds(),
+    trust: visitorId ? getVisitorTrust(visitorId) : 0,
   };
 }
 
@@ -63,7 +64,8 @@ const server = Bun.serve<WSData>({
 
     // REST: full game state
     if (url.pathname === "/game/state") {
-      return Response.json(getStateMessage());
+      const v = url.searchParams.get("v");
+      return Response.json(getStateMessage(v || undefined));
     }
 
     // Health check
@@ -90,7 +92,8 @@ const server = Bun.serve<WSData>({
   websocket: {
     open(ws) {
       addClient(ws);
-      send(ws, getStateMessage());
+      touchVisitor(ws.data.visitorId);
+      send(ws, getStateMessage(ws.data.visitorId));
     },
 
     close(ws) {

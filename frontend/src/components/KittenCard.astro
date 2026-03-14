@@ -51,6 +51,8 @@ const isSold = kitten.status === 'verkocht' || kitten.status === 'afgeleverd';
     transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     color: var(--color-text);
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .kitten-card:hover {

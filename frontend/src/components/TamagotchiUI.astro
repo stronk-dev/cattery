@@ -1,7 +1,10 @@
 ---
+import { Icon } from 'astro-icon/components';
+
+const tamaUiMode = import.meta.env.PUBLIC_TAMA_UI_MODE === 'widget' ? 'widget' : 'sidebar';
 ---
 
-<div class="tama-panel" id="tama-panel" data-state="collapsed">
+<div class="tama-panel" id="tama-panel" data-state="collapsed" data-ui-mode={tamaUiMode} data-widget-view="tools" style="display:none">
   <!-- Mobile toggle (hidden on desktop) -->
   <button class="tama-toggle" id="tama-toggle" aria-label="Tamagotchi paneel">
     <span class="tama-toggle-icon">🐾</span>
@@ -10,47 +13,56 @@
 
   <div class="tama-header" role="button" aria-expanded="false" aria-controls="tama-content">
     <div class="tama-header-copy">
-      <span class="tama-title">Kattenspel</span>
-      <span class="tama-mobile-hint" id="tama-mobile-hint">Tik om te openen</span>
+      <span class="tama-title"><Icon name="ph:cat" size={16} style="display:inline;vertical-align:-2px;margin-right:4px" /> Katten</span>
+      <span class="tama-header-hint" id="tama-header-hint">Tik om te openen</span>
     </div>
-    <div class="tama-header-right">
-      <span class="tama-connected" id="tama-status" title="Verbonden">●</span>
-      <span class="tama-mobile-toggle-pill" aria-hidden="true">
-        <span class="tama-mobile-pill-label" id="tama-mobile-pill-label">Open</span>
-        <span class="tama-mobile-chevron" id="tama-mobile-chevron">▾</span>
-      </span>
-      <button class="tama-dismiss" id="tama-dismiss" aria-label="Stuur alle katten weg" title="Stuur alle katten weg">
-        <span class="tama-dismiss-icon" aria-hidden="true">↗</span>
-        <span class="tama-dismiss-label">Wegsturen</span>
-      </button>
-    </div>
+    <button class="tama-header-action tama-header-toggle" id="tama-header-toggle" type="button" aria-label="Open of sluit kattenspel">
+      <span class="tama-mobile-pill-label" id="tama-mobile-pill-label">Open</span>
+      <span class="tama-mobile-chevron" id="tama-mobile-chevron">▾</span>
+    </button>
+    <button class="tama-header-action tama-dismiss" id="tama-dismiss" aria-label="Stuur alle katten weg" title="Stuur alle katten weg">
+      <span class="tama-dismiss-icon" aria-hidden="true"><Icon name="ph:sign-out" size={13} /></span>
+      <span class="tama-dismiss-label">Stuur weg</span>
+    </button>
   </div>
 
   <div class="tama-body">
+    <div class="tama-widget-nav" id="tama-widget-nav" aria-label="Kattenspel panelen">
+      <button class="tama-widget-button" id="tama-widget-tools" type="button" data-view="tools" aria-pressed="false">Tools</button>
+      <button class="tama-widget-button" id="tama-widget-cats" type="button" data-view="cats" aria-pressed="false">Katten</button>
+      <button class="tama-widget-button" id="tama-widget-feed" type="button" data-view="feed" aria-pressed="false">Activiteit</button>
+    </div>
+
     <!-- Item tray (pinned with header) -->
     <div class="tama-tray">
-      <div class="tama-tray-head">
-        <div>
-          <div class="tama-feed-title">Acties</div>
-          <div class="tama-tray-hint" id="tama-tray-hint">Klik of sleep</div>
+      <div class="tama-tray-top">
+        <span class="tama-tray-hint" id="tama-tray-hint">Klik of sleep</span>
+        <div class="tama-tray-actions">
+          <button class="tama-trash-action tama-trash-action--drop" id="tama-clear-action" type="button" aria-label="Laat vallen" title="Laat vallen"><Icon name="ph:trash" size={14} /></button>
+          <button class="tama-trash-action" id="tama-mute" type="button" aria-label="Geluid" title="Geluid"><Icon name="ph:speaker-high" size={14} /></button>
         </div>
-        <button class="tama-trash-action" id="tama-clear-action" type="button" hidden aria-label="Laat tool vallen" title="Laat tool vallen">🗑</button>
       </div>
       <div class="tama-tray-items">
-        <button class="tama-tray-item" data-item="food" data-default-variant="fish" type="button" title="Voer — klik om klaar te zetten of sleep naar de pagina">
-          <span class="tama-tray-icon">🍽️</span>
-          <span class="tama-tray-label">Voer</span>
-          <span class="tama-tray-variant" data-variant-label-for="food">🐟</span>
+        <button class="tama-tray-item" data-item="food" data-default-variant="fish" type="button" title="Voer">
+          <div class="tama-tray-item-top">
+            <span class="tama-tray-icon"><Icon name="ph:bowl-food" size={16} /></span>
+            <span class="tama-tray-label">Voer</span>
+          </div>
+          <span class="tama-tray-options" data-variant-options-for="food"></span>
         </button>
-        <button class="tama-tray-item" data-item="yarn" data-default-variant="yarn" type="button" title="Speelgoed — klik om klaar te zetten of sleep naar de pagina">
-          <span class="tama-tray-icon">🪀</span>
-          <span class="tama-tray-label">Spelen</span>
-          <span class="tama-tray-variant" data-variant-label-for="yarn">🧶</span>
+        <button class="tama-tray-item" data-item="yarn" data-default-variant="yarn" type="button" title="Spelen">
+          <div class="tama-tray-item-top">
+            <span class="tama-tray-icon"><Icon name="ph:yarn" size={16} /></span>
+            <span class="tama-tray-label">Spelen</span>
+          </div>
+          <span class="tama-tray-options" data-variant-options-for="yarn"></span>
         </button>
-        <button class="tama-tray-item" data-item="brush" data-default-variant="brush" type="button" title="Borstel — klik om klaar te zetten of sleep naar een kat">
-          <span class="tama-tray-icon">🪮</span>
-          <span class="tama-tray-label">Borstel</span>
-          <span class="tama-tray-variant" data-variant-label-for="brush">•</span>
+        <button class="tama-tray-item" data-item="brush" data-default-variant="brush" type="button" title="Borstel">
+          <div class="tama-tray-item-top">
+            <span class="tama-tray-icon"><Icon name="ph:paint-brush-household" size={16} /></span>
+            <span class="tama-tray-label">Borstel</span>
+          </div>
+          <span class="tama-tray-options" data-variant-options-for="brush"></span>
         </button>
       </div>
     </div>
@@ -62,10 +74,8 @@
           Klik op 🐱 om een kat te roepen
         </div>
       </div>
-
       <!-- Activity feed -->
       <div class="tama-feed" id="tama-feed">
-        <div class="tama-feed-title">Activiteit</div>
         <div class="tama-feed-list" id="tama-feed-list"></div>
       </div>
     </div>
@@ -75,29 +85,57 @@
 <!-- Drag ghost (follows cursor when dragging an item) -->
 <div class="tama-drag-ghost" id="tama-drag-ghost" style="display:none"></div>
 <div class="tama-cursor-preview" id="tama-cursor-preview" style="display:none"></div>
+<div class="tama-ask-layer" id="tama-ask-layer" aria-hidden="true"></div>
 
 <script>
   import { tamagotchi, type CareVariant, type TamagotchiCat } from '../lib/tamagotchi';
   import { initTamagotchiSounds } from '../lib/tamagotchi-sounds';
+  import { PH } from '../lib/ph-icons';
 
   const panel = document.getElementById('tama-panel')!;
   const toggle = document.getElementById('tama-toggle')!;
   const dismiss = document.getElementById('tama-dismiss')!;
+  const muteBtn = document.getElementById('tama-mute')!;
   const catsList = document.getElementById('tama-cats-list')!;
   const emptyEl = document.getElementById('tama-empty')!;
   const feedList = document.getElementById('tama-feed-list')!;
-  const statusEl = document.getElementById('tama-status')!;
+  const widgetToolsBtn = document.getElementById('tama-widget-tools') as HTMLButtonElement;
+  const widgetCatsBtn = document.getElementById('tama-widget-cats') as HTMLButtonElement;
+  const widgetFeedBtn = document.getElementById('tama-widget-feed') as HTMLButtonElement;
   const badge = document.getElementById('tama-badge')!;
   const dragGhost = document.getElementById('tama-drag-ghost')!;
   const cursorPreview = document.getElementById('tama-cursor-preview')!;
+  const askLayer = document.getElementById('tama-ask-layer')!;
   const trayHint = document.getElementById('tama-tray-hint')!;
   const clearActionBtn = document.getElementById('tama-clear-action') as HTMLButtonElement;
-  const mobileHintEl = document.getElementById('tama-mobile-hint')!;
+  const headerToggleBtn = document.getElementById('tama-header-toggle') as HTMLButtonElement;
+  const headerHintEl = document.getElementById('tama-header-hint')!;
   const mobilePillLabelEl = document.getElementById('tama-mobile-pill-label')!;
   const mobileChevronEl = document.getElementById('tama-mobile-chevron')!;
   const mainEl = document.getElementById('main')!;
+  const pageContentEl = mainEl.querySelector('.page-content') as HTMLElement | null;
   const isDesktop = () => window.innerWidth > 768;
+  const isWidgetMode = () => panel.dataset.uiMode === 'widget';
+  const WIDGET_VIEW_KEY = 'tama_widget_view';
+  const VALID_WIDGET_VIEWS = new Set(['tools', 'cats', 'feed']);
+  const getStoredWidgetView = () => {
+    const stored = localStorage.getItem(WIDGET_VIEW_KEY);
+    return stored && VALID_WIDGET_VIEWS.has(stored) ? stored : 'tools';
+  };
+  const widgetView = () => {
+    const view = panel.dataset.widgetView || 'tools';
+    return VALID_WIDGET_VIEWS.has(view) ? view : 'tools';
+  };
+  const setWidgetView = (view: string) => {
+    const next = VALID_WIDGET_VIEWS.has(view) ? view : 'tools';
+    panel.dataset.widgetView = next;
+    localStorage.setItem(WIDGET_VIEW_KEY, next);
+  };
+  if (isWidgetMode()) {
+    panel.dataset.widgetView = getStoredWidgetView();
+  }
   initTamagotchiSounds();
+  mainEl.appendChild(askLayer);
 
   const STAGE_LABELS: Record<string, string> = {
     kitten: 'Kitten',
@@ -141,18 +179,18 @@
   const VARIANT_LABELS: Record<CareVariant, string> = {
     fish: 'vis',
     pellets: 'brokjes',
-    treat: 'treat',
+    treat: 'snoepje',
     yarn: 'wol',
     feather: 'veertje',
     brush: 'borstel',
   };
 
   const VARIANT_ICONS: Record<CareVariant, string> = {
-    fish: '🐟',
-    pellets: '• •',
-    treat: '🍤',
-    yarn: '🧶',
-    feather: '🪶',
+    fish: PH.fish('14px'),
+    pellets: '',
+    treat: PH.cookie('14px'),
+    yarn: PH.yarn('14px'),
+    feather: PH.feather('14px'),
     brush: '🪮',
   };
 
@@ -171,27 +209,64 @@
 
   // Toggle panel (mobile: tap header, desktop: toggle button)
   const header = document.querySelector('.tama-header')!;
+  function syncWidgetUi() {
+    const activeView = widgetView();
+    widgetToolsBtn.classList.toggle('is-active', activeView === 'tools');
+    widgetCatsBtn.classList.toggle('is-active', activeView === 'cats');
+    widgetFeedBtn.classList.toggle('is-active', activeView === 'feed');
+    widgetToolsBtn.setAttribute('aria-pressed', String(activeView === 'tools'));
+    widgetCatsBtn.setAttribute('aria-pressed', String(activeView === 'cats'));
+    widgetFeedBtn.setAttribute('aria-pressed', String(activeView === 'feed'));
+  }
   function syncPanelStateUi() {
     const isOpen = panel.dataset.state === 'open';
     header.setAttribute('aria-expanded', String(isOpen));
-    mobileHintEl.textContent = isOpen ? 'Tik om te sluiten' : 'Tik om te openen';
+    headerHintEl.textContent = isOpen ? 'Tik om te sluiten' : 'Tik om te openen';
     mobilePillLabelEl.textContent = isOpen ? 'Dicht' : 'Open';
-    mobileChevronEl.textContent = isOpen ? '▾' : '▴';
+    // Desktop widget drops DOWN, mobile popup goes UP — chevron direction differs
+    const isTop = isDesktop() && isWidgetMode();
+    mobileChevronEl.textContent = isTop
+      ? (isOpen ? '▴' : '▾')   // top widget: open=up, closed=down
+      : (isOpen ? '▾' : '▴');  // bottom popup: open=down, closed=up
+    syncWidgetUi();
   }
   function togglePanel() {
     const isCollapsed = panel.dataset.state === 'collapsed';
     panel.dataset.state = isCollapsed ? 'open' : 'collapsed';
+    if (isCollapsed && isWidgetMode()) setWidgetView(widgetView());
     if (isCollapsed) badge.style.display = 'none';
     syncPanelStateUi();
   }
   toggle.addEventListener('click', togglePanel);
+  headerToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePanel();
+  });
   // On mobile, header acts as toggle
   header.addEventListener('click', (e) => {
-    if (window.innerWidth <= 768) {
+    if (window.innerWidth <= 768 || isWidgetMode()) {
       // Don't toggle if clicking dismiss button
-      if ((e.target as HTMLElement).closest('.tama-dismiss')) return;
+      if ((e.target as HTMLElement).closest('.tama-dismiss, .tama-header-toggle')) return;
       togglePanel();
     }
+  });
+  widgetToolsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setWidgetView('tools');
+    panel.dataset.state = 'open';
+    syncPanelStateUi();
+  });
+  widgetCatsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setWidgetView('cats');
+    panel.dataset.state = 'open';
+    syncPanelStateUi();
+  });
+  widgetFeedBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setWidgetView('feed');
+    panel.dataset.state = 'open';
+    syncPanelStateUi();
   });
 
   // Dismiss button closes the sidebar and shoos all tamagotchi cats
@@ -207,6 +282,20 @@
     document.dispatchEvent(new CustomEvent('tama-sound', { detail: { kind, ...detail } }));
   }
 
+  // Mute toggle
+  function syncMuteUi() {
+    const muted = localStorage.getItem('tamagotchi_sound_muted') === '1';
+    muteBtn.innerHTML = muted ? PH.speakerX('15px') : PH.speakerHigh('15px');
+    muteBtn.title = muted ? 'Geluid aan' : 'Geluid uit';
+  }
+  muteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const muted = localStorage.getItem('tamagotchi_sound_muted') === '1';
+    localStorage.setItem('tamagotchi_sound_muted', muted ? '0' : '1');
+    syncMuteUi();
+  });
+  syncMuteUi();
+
   function getVariantForItem(item: TrayItem): CareVariant {
     return selectedVariants[item];
   }
@@ -214,10 +303,11 @@
   function describeActiveAction(): string {
     if (!activeItem) return '';
     const variant = getVariantForItem(activeItem);
-    const icon = VARIANT_ICONS[variant] || ITEM_ICONS[activeItem];
     const label = VARIANT_LABELS[variant] || variant;
-    if (activeItem === 'brush') return `${icon} Borstel`;
-    return `${icon} ${label}`;
+    if (activeItem === 'brush') return 'Borstelen';
+    if (activeItem === 'food') return `Strooi ${label}`;
+    if (activeItem === 'yarn') return `Gooi ${label}`;
+    return label;
   }
 
   function setVariantVisual(target: HTMLElement, variant: CareVariant, fallback: string) {
@@ -232,11 +322,22 @@
       `;
       return;
     }
-    target.textContent = VARIANT_ICONS[variant] || fallback;
+    target.innerHTML = VARIANT_ICONS[variant] || fallback;
+  }
+
+  function syncVariantOptionUi(item: TrayItem) {
+    const host = document.querySelector(`[data-variant-options-for="${item}"]`) as HTMLElement | null;
+    if (!host) return;
+    const variants = ITEM_VARIANTS[item];
+    host.innerHTML = variants.map((variant) => {
+      const active = selectedVariants[item] === variant;
+      const icon = VARIANT_ICONS[variant] || '•';
+      return `<span class="tama-tray-option${active ? ' is-active' : ''}" aria-hidden="true">${icon}</span>`;
+    }).join('');
   }
 
   function syncActiveActionUi() {
-    clearActionBtn.hidden = !activeItem;
+    clearActionBtn.classList.toggle('is-active', !!activeItem);
     trayHint.textContent = activeItem
       ? describeActiveAction()
       : 'Klik of sleep';
@@ -247,11 +348,7 @@
     });
 
     (['food', 'yarn', 'brush'] as TrayItem[]).forEach((item) => {
-      const label = document.querySelector(`[data-variant-label-for="${item}"]`) as HTMLElement | null;
-      if (!label) return;
-      const variant = selectedVariants[item];
-      setVariantVisual(label, variant, '•');
-      label.classList.toggle('is-active', activeItem === item);
+      syncVariantOptionUi(item);
     });
 
     mainEl.classList.toggle('tama-main-armed', !!activeItem);
@@ -274,7 +371,14 @@
     syncActiveActionUi();
   }
 
+  function getLiveCatIntent(catId: string): string {
+    const catEl = document.querySelector(`.kitten--tamagotchi[data-tamagotchi-id="${catId}"]`) as HTMLElement | null;
+    return catEl?.dataset.liveIntent || '';
+  }
+
   function getCatIntent(cat: TamagotchiCat, onScreenCats: TamagotchiCat[], state = tamagotchi.getState()): string {
+    const liveIntent = getLiveCatIntent(cat.id);
+    if (liveIntent) return liveIntent;
     if (cat.energy < 25) return 'Moe';
     if (cat.hunger < 35) return 'Hongerig';
     if (cat.cleanliness < 35) return 'Wil een borstel';
@@ -295,7 +399,24 @@
     if (cat.personality === 'curious') return 'Aan het observeren';
     if (cat.personality === 'playful') return 'Klaar om te spelen';
     if (cat.personality === 'sassy') return 'Kijkt kritisch';
+    if (cat.personality === 'shy') return 'Houdt afstand';
+    if (cat.personality === 'chaotic') return 'Onvoorspelbaar';
     return 'Op zijn gemak';
+  }
+
+  function getOnScreenTamagotchiCats() {
+    const state = tamagotchi.getState();
+    if (!state) return [];
+    const mainRect = mainEl.getBoundingClientRect();
+
+    // Show ALL active tamagotchi cats in sidebar (not just visible ones — they're your cats)
+    const onScreenIds = new Set<string>();
+    document.querySelectorAll('.kitten--tamagotchi:not(.kitten--shooed)').forEach((el) => {
+      const id = (el as HTMLElement).dataset.tamagotchiId;
+      if (id) onScreenIds.add(id);
+    });
+
+    return state.cats.filter((cat) => cat.isTamagotchi && onScreenIds.has(cat.id));
   }
 
   /* ═══ Cats list (all on-screen tamagotchi cats) ══════════ */
@@ -303,15 +424,7 @@
   function updateCatsList() {
     const state = tamagotchi.getState();
     if (!state) return;
-
-    // Find which tamagotchi cats are on screen via DOM
-    const onScreenIds = new Set<string>();
-    document.querySelectorAll('.kitten--tamagotchi').forEach(el => {
-      const id = (el as HTMLElement).dataset.tamagotchiId;
-      if (id) onScreenIds.add(id);
-    });
-
-    const onScreenCats = state.cats.filter(c => c.isTamagotchi && onScreenIds.has(c.id));
+    const onScreenCats = getOnScreenTamagotchiCats();
 
     if (onScreenCats.length === 0) {
       emptyEl.style.display = 'block';
@@ -361,10 +474,10 @@
         <span class="tama-card-stage">${STAGE_LABELS[stage] || stage}</span>
       </div>
       <div class="tama-card-stats">
-        <div class="tama-mini-stat" title="Honger"><span>🍽️</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="hunger"></div></div></div>
-        <div class="tama-mini-stat" title="Geluk"><span>😺</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="happiness"></div></div></div>
-        <div class="tama-mini-stat" title="Energie"><span>⚡</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="energy"></div></div></div>
-        <div class="tama-mini-stat" title="Netheid"><span>✨</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="cleanliness"></div></div></div>
+        <div class="tama-mini-stat" title="Honger"><span>${PH.bowlFood('12px')}</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="hunger"></div></div></div>
+        <div class="tama-mini-stat" title="Geluk"><span>${PH.heart('12px')}</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="happiness"></div></div></div>
+        <div class="tama-mini-stat" title="Energie"><span>${PH.lightning('12px')}</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="energy"></div></div></div>
+        <div class="tama-mini-stat" title="Netheid"><span>${PH.sparkle('12px')}</span><div class="tama-mini-bar"><div class="tama-mini-fill" data-stat="cleanliness"></div></div></div>
       </div>
     `;
 
@@ -441,6 +554,9 @@
   let dragPageSamples: Array<{ x: number; y: number; t: number }> = [];
   let pointerStartedDrag = false;
   let pointerCleanup: (() => void) | null = null;
+  let lastFocusClientX = window.innerWidth * 0.5;
+  let lastFocusClientY = window.innerHeight * 0.45;
+  let overlayCooldownUntil = 0;
 
   function finishPointerTracking() {
     pointerCleanup?.();
@@ -508,22 +624,14 @@
       const onUp = (event: PointerEvent) => {
         if (brushInterval) clearInterval(brushInterval);
         if (dragItem && pointerStartedDrag) {
-          const gestureDx = event.clientX - dragStartX;
-          const gestureDy = event.clientY - dragStartY;
-          const throwBias = dragItem === 'food' ? 1.25 : 1;
-          let throwVx = ((dragVx * 1.1) + (gestureDx * 0.16)) * throwBias;
-          let throwVy = ((dragVy * 1.1) + (gestureDy * 0.16)) * throwBias;
+          const { throwVx, throwVy } = getReleaseVelocity(dragItem);
 
-          if (dragItem === 'yarn' && dragPageSamples.length >= 2) {
-            const first = dragPageSamples[0];
-            const last = dragPageSamples[dragPageSamples.length - 1];
-            const pageDx = last.x - first.x;
-            const pageDy = last.y - first.y;
-            throwVx = (dragVx * 1.35) + (pageDx * 0.28);
-            throwVy = (dragVy * 1.35) + (pageDy * 0.28);
+          // Sound on THROW: only for play items (swish). Food sound plays on EAT in WalkingKittens.
+          // Throw sound: swish for yarn/feather. Brush + food sounds come from WalkingKittens on interaction.
+          if (dragItem === 'yarn') {
+            const v = getVariantForItem(dragItem);
+            emitLocalSound(v === 'feather' ? 'play-feather' : 'play-yarn');
           }
-
-          emitLocalSound(ITEM_TO_ACTION[dragItem], { variant: getVariantForItem(dragItem) });
           dispatchItemUse(
             dragItem,
             event.pageX,
@@ -556,29 +664,88 @@
     });
   });
 
+  function getReleaseVelocity(item: TrayItem) {
+    const gestureDx = dragPrevX - dragStartX;
+    const gestureDy = dragPrevY - dragStartY;
+    let throwVx = (dragVx * 1.1) + (gestureDx * 0.16);
+    let throwVy = (dragVy * 1.1) + (gestureDy * 0.16);
+
+    if ((item === 'food' || item === 'yarn') && dragPageSamples.length >= 2) {
+      const first = dragPageSamples[0];
+      const last = dragPageSamples[dragPageSamples.length - 1];
+      const pageDx = last.x - first.x;
+      const pageDy = last.y - first.y;
+      throwVx = (dragVx * 1.35) + (pageDx * 0.28);
+      throwVy = (dragVy * 1.35) + (pageDy * 0.28);
+    }
+
+    if (item === 'food') {
+      throwVx *= 1.25;
+      throwVy *= 1.25;
+    }
+
+    return { throwVx, throwVy };
+  }
+
   function moveDragGhost(cx: number, cy: number) {
     dragGhost.style.left = `${cx - 16}px`;
     dragGhost.style.top = `${cy - 16}px`;
   }
 
-  mainEl.addEventListener('click', (e) => {
-    if (!activeItem) return;
+  // Click-to-place with throw: pointerdown → drag to aim → pointerup releases with velocity
+  mainEl.addEventListener('pointerdown', (e) => {
+    if (!activeItem || e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest('.tama-panel')) return;
+    if (target.closest('.tama-panel') || target.closest('.kitten')) return;
+
+    const item = activeItem;
+    const variant = getVariantForItem(item);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let prevX = startX;
+    let prevY = startY;
+    let throwVx = 0;
+    let throwVy = 0;
+    let moved = false;
+
+    const onMove = (ev: PointerEvent) => {
+      throwVx = ev.clientX - prevX;
+      throwVy = ev.clientY - prevY;
+      prevX = ev.clientX;
+      prevY = ev.clientY;
+      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) moved = true;
+    };
+    const onUp = (ev: PointerEvent) => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      const gestureDx = ev.clientX - startX;
+      const gestureDy = ev.clientY - startY;
+      const vx = moved ? (throwVx * 1.2 + gestureDx * 0.15) : 0;
+      const vy = moved ? (throwVy * 1.2 + gestureDy * 0.15) : 0;
+
+      if (item === 'yarn') {
+        emitLocalSound(variant === 'feather' ? 'play-feather' : 'play-yarn');
+      }
+      dispatchItemUse(item, ev.pageX, ev.pageY, variant, undefined, vx, vy);
+      setActiveItem(null);
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
     e.preventDefault();
-    e.stopPropagation();
-    emitLocalSound(ITEM_TO_ACTION[activeItem], { variant: getVariantForItem(activeItem) });
-    dispatchItemUse(activeItem, e.pageX, e.pageY, getVariantForItem(activeItem));
-    setActiveItem(null);
   }, true);
 
   document.addEventListener('pointermove', (e) => {
+    const target = e.target as HTMLElement | null;
+    if (!target?.closest('.tama-panel')) {
+      lastFocusClientX = e.clientX;
+      lastFocusClientY = e.clientY;
+    }
     if (!activeItem) return;
     if (dragItem || pointerStartedDrag) {
       cursorPreview.style.display = 'none';
       return;
     }
-    const target = e.target as HTMLElement | null;
     if (target?.closest('.tama-panel')) {
       cursorPreview.style.display = 'none';
       return;
@@ -588,6 +755,136 @@
     cursorPreview.style.top = `${e.clientY + 12}px`;
     cursorPreview.style.display = 'flex';
   });
+
+  function syncAskLayerBounds() {
+    const pageHeight = Math.max(pageContentEl?.offsetHeight || 0, mainEl.clientHeight);
+    askLayer.style.width = `${mainEl.clientWidth}px`;
+    askLayer.style.height = `${pageHeight}px`;
+  }
+
+  function viewportPointToMain(x: number, y: number) {
+    const rect = mainEl.getBoundingClientRect();
+    return {
+      x: x - rect.left,
+      y: y - rect.top + mainEl.scrollTop,
+    };
+  }
+
+  function getFocusMainPoint() {
+    const rect = mainEl.getBoundingClientRect();
+    const insideMain =
+      lastFocusClientX >= rect.left &&
+      lastFocusClientX <= rect.right &&
+      lastFocusClientY >= rect.top &&
+      lastFocusClientY <= rect.bottom;
+
+    if (insideMain) {
+      return viewportPointToMain(lastFocusClientX, lastFocusClientY);
+    }
+
+    return {
+      x: rect.width * 0.5,
+      y: mainEl.scrollTop + Math.min(rect.height * 0.38, 220),
+    };
+  }
+
+  function getCatMainPoint(catId?: string) {
+    if (!catId) return null;
+    const catEl = document.querySelector(`[data-tamagotchi-id="${catId}"]`) as HTMLElement | null;
+    if (!catEl) return null;
+    const rect = catEl.getBoundingClientRect();
+    return viewportPointToMain(rect.left + rect.width * 0.5, rect.top - 6);
+  }
+
+  function canShowOverlay() {
+    return Date.now() >= overlayCooldownUntil;
+  }
+
+  function reserveOverlayCooldown(ms = 2400) {
+    overlayCooldownUntil = Date.now() + ms;
+  }
+
+  function clampOverlayPoint(x: number, y: number, padX = 28, padY = 28) {
+    const pageHeight = Math.max(pageContentEl?.offsetHeight || 0, mainEl.clientHeight);
+    return {
+      x: Math.max(padX, Math.min(mainEl.clientWidth - padX, x)),
+      y: Math.max(mainEl.scrollTop + padY, Math.min(pageHeight - padY, y)),
+    };
+  }
+
+  function attachOverlayDismiss(indicator: HTMLElement) {
+    const createdAt = performance.now();
+    const dismiss = (e: Event) => {
+      if (performance.now() - createdAt < 220) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      indicator.remove();
+    };
+    indicator.addEventListener('pointerdown', dismiss);
+    indicator.addEventListener('click', dismiss);
+  }
+
+  function showAskIndicator(detail: {
+    catName?: string;
+    icon?: string;
+    label?: string;
+    x?: number;
+    y?: number;
+  }) {
+    if (!canShowOverlay()) return;
+    syncAskLayerBounds();
+    const point = clampOverlayPoint(
+      detail.x ?? (mainEl.clientWidth * 0.5),
+      (detail.y ?? (mainEl.scrollTop + mainEl.clientHeight * 0.45)) - 58,
+      24,
+      24,
+    );
+    const indicator = document.createElement('div');
+    indicator.className = 'tama-ask-indicator';
+    indicator.style.left = `${point.x}px`;
+    indicator.style.top = `${point.y}px`;
+    indicator.innerHTML = `
+      <span class="tama-ask-indicator-icon">${detail.icon || '💬'}</span>
+      <span class="tama-ask-indicator-text">${detail.catName || 'Een kat'} ${detail.label || 'zoekt je'}</span>
+    `;
+    askLayer.appendChild(indicator);
+    while (askLayer.childElementCount > 4) {
+      askLayer.firstElementChild?.remove();
+    }
+    reserveOverlayCooldown();
+    attachOverlayDismiss(indicator);
+    indicator.addEventListener('animationend', () => indicator.remove());
+  }
+
+  function showHintIndicator(message: string, opts: { catId?: string; placement?: 'focus' | 'cat' } = {}) {
+    if (!canShowOverlay()) return;
+    syncAskLayerBounds();
+    const catAnchor = opts.placement === 'cat' ? getCatMainPoint(opts.catId) : null;
+    if (opts.placement === 'cat' && !catAnchor) return;
+    const anchor = catAnchor || getFocusMainPoint();
+    const point = clampOverlayPoint(
+      anchor.x,
+      anchor.y - (opts.placement === 'cat' ? 96 : 82),
+      170,
+      112,
+    );
+    const indicator = document.createElement('div');
+    indicator.className = 'tama-hint-indicator';
+    indicator.style.left = `${point.x}px`;
+    indicator.style.top = `${point.y}px`;
+    indicator.textContent = message;
+    askLayer.appendChild(indicator);
+    while (askLayer.childElementCount > 4) {
+      askLayer.firstElementChild?.remove();
+    }
+    reserveOverlayCooldown();
+    attachOverlayDismiss(indicator);
+    indicator.addEventListener('animationend', () => indicator.remove());
+  }
 
   /* ═══ Activity feed ══════════════════════════════════════ */
 
@@ -645,6 +942,10 @@
     updateFeed();
   });
 
+  window.setInterval(() => {
+    updateCatsList();
+  }, 400);
+
   tamagotchi.on('care-result', (data: any) => {
     if (panel.dataset.state === 'collapsed') {
       badge.style.display = 'inline-block';
@@ -664,30 +965,30 @@
     updateCatsList();
   });
 
-  tamagotchi.on('connected', () => {
-    statusEl.style.color = 'var(--tama-stat-good, #5a9e4b)';
-    statusEl.title = 'Verbonden';
-  });
-
-  tamagotchi.on('disconnected', () => {
-    statusEl.style.color = 'var(--tama-stat-bad, #c94a4a)';
-    statusEl.title = 'Verbinding verbroken';
-  });
-
   // Periodically refresh cat list (catches cats walking on/off screen)
   setInterval(updateCatsList, 2000);
 
   // Show/hide panel based on tamagotchi cats on screen
+
+  function syncNavHeight() {
+    const nav = document.querySelector('.nav') as HTMLElement | null;
+    if (nav) panel.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+  }
+  syncNavHeight();
+  window.addEventListener('resize', syncNavHeight);
+
   function updatePanelVisibility() {
     if (dismissed) return;
-    const hasTamaCats = document.querySelectorAll('.kitten--tamagotchi').length > 0;
+    const hasTamaCats = document.querySelectorAll('.kitten--tamagotchi:not(.kitten--shooed)').length > 0;
     if (!hasTamaCats) {
       panel.style.display = 'none';
+      if (isWidgetMode()) panel.dataset.widgetView = getStoredWidgetView();
+      panel.dataset.state = 'collapsed';
       return;
     }
     panel.style.display = '';
-    // Desktop: always open (no toggle needed)
-    if (isDesktop()) {
+    // Desktop sidebar stays open; widget mode stays collapsible
+    if (isDesktop() && !isWidgetMode()) {
       panel.dataset.state = 'open';
     }
     syncPanelStateUi();
@@ -699,24 +1000,143 @@
   tamagotchi.on('state-update', updatePanelVisibility);
   document.addEventListener('tama-cats-changed', () => {
     // New cats spawned — reset dismissed state so panel can reappear
-    const hasTamaCats = document.querySelectorAll('.kitten--tamagotchi').length > 0;
+    const hasTamaCats = document.querySelectorAll('.kitten--tamagotchi:not(.kitten--shooed)').length > 0;
     if (hasTamaCats) dismissed = false;
     updatePanelVisibility();
     updateCatsList();
   });
   setInterval(updatePanelVisibility, 2000);
+  mainEl.addEventListener('scroll', syncAskLayerBounds, { passive: true });
+  window.addEventListener('resize', syncAskLayerBounds);
+  syncAskLayerBounds();
+
+  document.addEventListener('tama-ask-indicator', ((e: CustomEvent) => {
+    showAskIndicator(e.detail || {});
+  }) as EventListener);
 
   function triggerCarePopup(catId: string, action: string, variant?: CareVariant) {
     const catEl = document.querySelector(`[data-tamagotchi-id="${catId}"]`) as HTMLElement;
     if (!catEl) return;
 
-    const icon = (variant && VARIANT_ICONS[variant]) || ACTION_ICONS[action] || '💕';
+    const icon = ACTION_ICONS[action] || '💕'; // popups stay emoji — expressive and fleeting
     const popup = document.createElement('div');
     popup.className = 'tama-care-popup';
     popup.textContent = icon;
     catEl.appendChild(popup);
     popup.addEventListener('animationend', () => popup.remove());
   }
+
+  /* ═══ Educational hints ═══════════════════════════════════ */
+
+  let hintCooldown = 0;
+  const HINT_REPEAT_MS = 180000;
+  const hintHistory: Record<string, number> = JSON.parse(sessionStorage.getItem('tama_hint_history') || '{}');
+  const GLOBAL_LESSON_HINTS = new Set([
+    'slow-blink',
+    'social-groom',
+    'head-bonk',
+    'nap-pile',
+    'kneading',
+  ]);
+  const GLOBAL_TRUST_HINTS = new Set([
+    'trust-low',
+    'trust-growing',
+    'trust-high',
+  ]);
+
+  type HintDetail = {
+    key?: string;
+    catId?: string;
+    catName?: string;
+    otherCatId?: string;
+    otherCatName?: string;
+    preferredVariantLabel?: string;
+    placement?: 'focus' | 'cat';
+  };
+
+  function getHintMessage(detail: HintDetail): string {
+    const key = detail.key || '';
+    const catName = detail.catName || 'deze kat';
+    const otherCatName = detail.otherCatName || 'een andere kat';
+
+    switch (key) {
+      case 'slow-blink':
+        return `💡 ${catName} knippert langzaam: dat is een teken van vertrouwen.`;
+      case 'over-pet':
+        return `💡 Let op ${catName} zijn staart: snelle bewegingen betekenen overstimulatie.`;
+      case 'social-groom':
+        return `💡 ${catName} en ${otherCatName} likken elkaar om hun band te versterken.`;
+      case 'head-bonk':
+        return `💡 ${catName} en ${otherCatName} geven kopjes: katten zeggen zo "je hoort bij mij".`;
+      case 'nap-pile':
+        return `💡 Katten slapen samen als ze zich veilig voelen bij elkaar.`;
+      case 'wake-sleeping-cat':
+        return `💡 ${catName} lag net te slapen: plots wakker gemaakt worden vinden katten meestal niet fijn.`;
+      case 'annoyed-cat':
+        return `💡 ${catName} is overprikkeld en heeft even rust nodig.`;
+      case 'shoo-warning':
+        return `💡 ${catName} heeft nu echt ruimte nodig — nog verder pushen jaagt de kat weg.`;
+      case 'sassy-reject':
+        return `💡 ${catName} heeft nu even geen zin in aandacht.`;
+      case 'ignore-food':
+        return detail.preferredVariantLabel
+          ? `💡 ${catName} is kieskeurig over voer — probeer eens ${detail.preferredVariantLabel}.`
+          : `💡 ${catName} is kieskeurig over voer — probeer een ander soort hapje.`;
+      case 'ignore-play':
+        return detail.preferredVariantLabel
+          ? `💡 ${catName} heeft meer zin in ${detail.preferredVariantLabel} dan in dit speeltje.`
+          : `💡 ${catName} heeft nu niet zoveel zin om te spelen — probeer later nog eens.`;
+      case 'trust-low':
+        return `💡 ${catName} kent je nog van een eerder bezoek, maar blijft voorlopig liever voorzichtig.`;
+      case 'trust-growing':
+        return `💡 ${catName} begint je te herkennen en durft langzaam dichterbij te komen.`;
+      case 'trust-high':
+        return `💡 ${catName} herkent je goed en zoekt je nu uit zichzelf op.`;
+      case 'kneading':
+        return `💡 ${catName} "kneedt": dat doen katten als ze zich heel veilig voelen.`;
+      case 'shy-approach':
+        return `💡 Dat ${catName} dichtbij komt, is een groot compliment van een verlegen kat.`;
+      default:
+        return '';
+    }
+  }
+
+  function showHint(detail: HintDetail) {
+    const key = detail.key || '';
+    const message = getHintMessage(detail);
+    if (!key || !message || hintCooldown > 0) return;
+    const now = Date.now();
+    const repeatKey =
+      GLOBAL_LESSON_HINTS.has(key) || GLOBAL_TRUST_HINTS.has(key)
+        ? key
+        : detail.catId
+          ? `${key}:${detail.catId}`
+          : key;
+    const lastShownAt = hintHistory[repeatKey] || 0;
+    if (now - lastShownAt < HINT_REPEAT_MS) return;
+    hintHistory[repeatKey] = now;
+    sessionStorage.setItem('tama_hint_history', JSON.stringify(hintHistory));
+    showHintIndicator(message, { catId: detail.catId, placement: detail.placement });
+    hintCooldown = 12000;
+  }
+
+  // Decrement cooldown
+  setInterval(() => { if (hintCooldown > 0) hintCooldown -= 1000; }, 1000);
+
+  // Listen for hint triggers from WalkingKittens
+  document.addEventListener('tama-hint', ((e: CustomEvent) => {
+    showHint(e.detail || {});
+  }) as EventListener);
+
+  // Trust-based hints
+  tamagotchi.on('state-update', () => {
+    const trust = tamagotchi.getTrust();
+    const firstCat = getOnScreenTamagotchiCats()[0];
+    if (!firstCat) return;
+    if (trust < 10) showHint({ key: 'trust-low', catId: firstCat?.id, catName: firstCat?.name, placement: 'cat' });
+    else if (trust > 20 && trust < 40) showHint({ key: 'trust-growing', catId: firstCat?.id, catName: firstCat?.name, placement: 'cat' });
+    else if (trust > 70) showHint({ key: 'trust-high', catId: firstCat?.id, catName: firstCat?.name, placement: 'cat' });
+  });
 
   syncActiveActionUi();
   syncPanelStateUi();
@@ -739,9 +1159,18 @@
     flex-direction: column;
     overflow: hidden;
     box-shadow: inset 1px 0 0 rgba(255,255,255,0.45);
+    animation: tama-sidebar-slide-in 0.3s ease-out;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  @keyframes tama-sidebar-slide-in {
+    0% { opacity: 0; transform: translateX(40px); }
+    100% { opacity: 1; transform: translateX(0); }
   }
   .tama-body {
     display: contents;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .tama-content {
@@ -751,6 +1180,94 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+  .tama-widget-nav {
+    display: none;
+  }
+
+  .tama-panel[data-ui-mode="widget"] {
+    position: fixed;
+    right: 0;
+    top: var(--nav-height, 4.5rem);
+    bottom: auto;
+    width: min(320px, calc(100dvw - 32px));
+    max-width: calc(100dvw - 32px);
+    height: auto;
+    background: none;
+    border-left: none;
+    overflow: visible;
+    box-shadow: none;
+    z-index: 100;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-body {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    transform-origin: top right;
+    pointer-events: none;
+    transition:
+      max-height 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 180ms ease,
+      transform 220ms ease;
+  }
+  .tama-panel[data-ui-mode="widget"][data-state="open"] .tama-body {
+    max-height: min(72dvh, 640px);
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-header {
+    border: 1px solid var(--color-border, #e0d5c7);
+    border-radius: 0;
+    background: var(--color-bg-alt, #faf6f0);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 8px 24px rgba(93, 70, 48, 0.14);
+    cursor: pointer;
+    margin-bottom: 0;
+  }
+  .tama-panel[data-ui-mode="widget"][data-state="open"] .tama-header {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-widget-nav,
+  .tama-panel[data-ui-mode="widget"] .tama-tray,
+  .tama-panel[data-ui-mode="widget"] .tama-content {
+    width: 100%;
+    max-width: 100%;
+    background: var(--color-bg-alt, #faf6f0);
+    border-left: 1px solid var(--color-border, #e0d5c7);
+    border-right: 1px solid var(--color-border, #e0d5c7);
+    margin-bottom: 0;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-widget-nav {
+    display: none;
+    border-top: none;
+    border-bottom: 1px solid rgba(108, 82, 55, 0.1);
+  }
+  .tama-panel[data-ui-mode="widget"][data-state="open"] .tama-widget-nav {
+    display: flex;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-tray {
+    border-top: none;
+    border-bottom: 1px solid rgba(108, 82, 55, 0.1);
+    border-radius: 0;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-content {
+    border-top: none;
+    border-bottom: 1px solid var(--color-border, #e0d5c7);
+    border-bottom-left-radius: var(--radius, 12px);
+    border-bottom-right-radius: 0;
+    box-shadow: 0 10px 24px rgba(93, 70, 48, 0.12);
+    max-height: min(56dvh, 420px);
+    overflow-y: auto;
+    margin-bottom: 0;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-mobile-chevron {
+    display: inline-flex;
   }
 
   /* Mobile: fixed bottom-right popup */
@@ -782,16 +1299,66 @@
       transform: translateY(12px);
       pointer-events: none;
     }
-    .tama-content {
+    .tama-panel:not([data-ui-mode="widget"]) .tama-content {
       background: var(--color-bg-alt, #faf6f0);
       border: 1px solid var(--color-border, #e0d5c7);
       border-radius: var(--radius, 12px);
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      width: calc(100vw - 32px);
-      max-width: 320px;
+      width: min(320px, calc(100dvw - 32px));
+      max-width: calc(100dvw - 32px);
       max-height: min(70dvh, 560px);
       overflow-y: auto;
       margin-bottom: 8px;
+    }
+    .tama-panel[data-ui-mode="widget"] {
+      right: 16px;
+      bottom: 16px;
+      top: auto;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    .tama-panel[data-ui-mode="widget"] .tama-header {
+      border-radius: var(--radius, 12px);
+    }
+    .tama-panel[data-ui-mode="widget"][data-state="open"] .tama-header {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      border-bottom-left-radius: var(--radius, 12px);
+      border-bottom-right-radius: var(--radius, 12px);
+    }
+    .tama-panel[data-ui-mode="widget"] .tama-body {
+      display: flex;
+      flex-direction: column-reverse;
+      transform-origin: bottom right;
+      transform: translateY(12px);
+    }
+    .tama-panel[data-ui-mode="widget"][data-state="open"] .tama-body {
+      transform: translateY(0);
+    }
+    .tama-panel[data-ui-mode="widget"][data-state="collapsed"] .tama-body {
+      transform: translateY(12px);
+    }
+    .tama-panel[data-ui-mode="widget"] .tama-content {
+      max-height: min(60dvh, 420px);
+      border-top-left-radius: var(--radius, 12px);
+      border-top-right-radius: var(--radius, 12px);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      margin-bottom: 0;
+    }
+    .tama-panel[data-ui-mode="widget"] .tama-body {
+      transform-origin: bottom right;
+      transform: translateY(12px);
+    }
+    .tama-panel[data-ui-mode="widget"][data-state="collapsed"] .tama-header {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .tama-panel[data-ui-mode="widget"][data-state="collapsed"] .tama-header-toggle {
+      display: none;
+    }
+    .tama-panel[data-ui-mode="widget"][data-state="collapsed"] .tama-header-copy {
+      padding-right: 10px;
     }
   }
 
@@ -826,8 +1393,11 @@
   /* ══ Header ═════════════════════════════════════════════ */
 
   .tama-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 14px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
     border-bottom: 1px solid var(--color-border, #e0d5c7);
     flex-shrink: 0;
     background: rgba(255, 252, 247, 0.7);
@@ -839,35 +1409,45 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    padding: 14px 14px 12px;
   }
-  .tama-mobile-hint {
+  .tama-header-action {
+    appearance: none;
+    border: none;
+    border-left: 1px solid rgba(108, 82, 55, 0.1);
+    background: transparent;
+    color: #6d4c35;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+  }
+  .tama-header-action:hover {
+    background: rgba(123, 86, 57, 0.08);
+    color: #5d3e27;
+  }
+  .tama-header-hint {
     display: none;
     font-size: 11px;
     font-weight: 600;
     color: var(--color-text-muted, #8a7d6d);
     line-height: 1.2;
   }
-  .tama-mobile-toggle-pill {
-    display: none;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 9px;
-    border-radius: 999px;
-    border: 1px solid rgba(123, 86, 57, 0.2);
-    background: rgba(123, 86, 57, 0.09);
-    color: #6d4c35;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    line-height: 1;
-    white-space: nowrap;
-  }
   .tama-mobile-pill-label {
     display: inline-flex;
     align-items: center;
   }
   .tama-mobile-chevron {
-    display: none;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 14px;
@@ -878,14 +1458,13 @@
   }
 
   @media (max-width: 768px) {
-    .tama-header {
+    .tama-panel:not([data-ui-mode="widget"]) .tama-header {
       background: var(--color-bg-alt, #faf6f0);
       border: 1px solid var(--color-border, #e0d5c7);
       border-radius: var(--radius, 12px);
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
       margin-bottom: 0;
-      padding: 14px;
-      border-bottom-left-radius: 0;
+      border-radius: 0;
       border-bottom-right-radius: 0;
       cursor: pointer;
       transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
@@ -894,44 +1473,27 @@
       transform: scale(0.995);
     }
     /* When collapsed, header is the only visible part — make it a pill */
-    .tama-panel[data-state="collapsed"] .tama-header {
+    .tama-panel:not([data-ui-mode="widget"])[data-state="collapsed"] .tama-header {
       border-radius: var(--radius, 12px);
       box-shadow: 0 8px 24px rgba(93, 70, 48, 0.14);
     }
-    .tama-panel[data-state="collapsed"] .tama-mobile-hint {
+    .tama-panel:not([data-ui-mode="widget"])[data-state="collapsed"] .tama-header-hint {
       color: #7b5639;
     }
-    .tama-panel[data-state="collapsed"] .tama-mobile-toggle-pill {
-      background: rgba(123, 86, 57, 0.14);
-      border-color: rgba(123, 86, 57, 0.28);
-    }
-    .tama-panel[data-state="collapsed"] .tama-connected {
-      opacity: 0;
-      transform: scale(0.6);
-      width: 0;
-      margin: 0;
-      overflow: hidden;
-    }
-    .tama-panel[data-state="open"] .tama-connected {
-      opacity: 1;
-      transform: scale(1);
-      width: 10px;
-    }
     /* When open, tray and content connect to header seamlessly */
-    .tama-panel[data-state="open"] .tama-tray {
+    .tama-panel:not([data-ui-mode="widget"])[data-state="open"] .tama-tray {
       background: var(--color-bg-alt, #faf6f0);
       border: 1px solid var(--color-border, #e0d5c7);
       border-top: none;
       border-bottom: 1px solid var(--color-border, #e0d5c7);
       border-radius: 0;
     }
-    .tama-panel[data-state="open"] .tama-content {
+    .tama-panel:not([data-ui-mode="widget"])[data-state="open"] .tama-content {
       border-top: none;
       border-top-left-radius: 0;
       border-top-right-radius: 0;
     }
-    .tama-mobile-hint,
-    .tama-mobile-toggle-pill,
+    .tama-header-hint,
     .tama-mobile-chevron {
       display: inline-flex;
     }
@@ -940,37 +1502,14 @@
     /* dismiss stays visible on mobile */
   }
   .tama-title { font-weight: 700; font-size: 15px; color: var(--color-text, #3d3225); }
-  .tama-header-right { display: flex; align-items: center; gap: 8px; }
-  .tama-connected {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 10px;
-    font-size: 10px;
-    color: var(--tama-stat-good, #5a9e4b);
-    transition: opacity 180ms ease, transform 180ms ease, width 180ms ease, margin 180ms ease;
-  }
   .tama-dismiss {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(185, 95, 74, 0.08);
-    border: 1px solid rgba(185, 95, 74, 0.18);
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 700;
     color: #8d4d3c;
-    padding: 6px 9px;
-    line-height: 1;
-    transition: opacity 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+    white-space: normal;
+    line-height: 1.05;
   }
   .tama-dismiss:hover {
-    opacity: 1;
     background: rgba(185, 95, 74, 0.14);
-    border-color: rgba(185, 95, 74, 0.28);
   }
-  .tama-dismiss:active { transform: scale(0.98); }
   .tama-dismiss-icon {
     display: inline-flex;
     align-items: center;
@@ -980,6 +1519,9 @@
   .tama-dismiss-label {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-width: 4.6ch;
   }
 
   /* ══ Cat cards ══════════════════════════════════════════ */
@@ -988,24 +1530,24 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-bottom: 8px;
+    padding-bottom: 4px;
   }
 
   .tama-cat-card {
-    padding: 10px;
-    margin: 0 0 10px;
-    border: 1px solid rgba(108, 82, 55, 0.12);
-    border-radius: 14px;
+    padding: 9px 0 10px;
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid rgba(108, 82, 55, 0.1);
+    border-radius: 0;
     cursor: pointer;
-    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
-    background: rgba(255, 251, 246, 0.82);
-    box-shadow: 0 10px 18px rgba(93, 70, 48, 0.06);
+    transition: background 0.15s;
+    background: transparent;
+    box-shadow: none;
   }
   .tama-cat-card:hover {
-    background: rgba(255,255,255,0.92);
-    transform: translateY(-1px);
-    box-shadow: 0 14px 24px rgba(93, 70, 48, 0.1);
+    background: rgba(255,255,255,0.34);
   }
+  .tama-cat-card:last-child { border-bottom: none; }
 
   .tama-card-header {
     display: flex; justify-content: space-between; align-items: baseline;
@@ -1082,11 +1624,16 @@
   }
   .tama-mini-stat:hover::after { opacity: 1; }
   .tama-mini-stat span {
-    font-size: 10px;
-    background: var(--color-bg-dark, #2c2420);
-    border-radius: 4px;
-    padding: 1px 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    color: var(--color-text-muted, #8a7d6d);
     line-height: 1;
+  }
+  .tama-mini-stat span svg {
+    width: 12px;
+    height: 12px;
   }
 
   .tama-mini-bar {
@@ -1108,98 +1655,157 @@
   /* ══ Item tray ══════════════════════════════════════════ */
 
   .tama-tray {
-    padding: 12px;
+    padding: 8px 0 0;
     border-bottom: 1px solid var(--color-border, #e0d5c7);
     flex-shrink: 0;
     background: rgba(255, 251, 246, 0.7);
   }
-  .tama-tray-head {
+
+  /* Top row: hint text + action buttons */
+  .tama-tray-top {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    padding: 0 12px;
   }
   .tama-tray-hint {
     font-size: 11px;
+    font-weight: 600;
     color: var(--color-text-muted, #8a7d6d);
-    line-height: 1.4;
-    max-width: 10ch;
+  }
+  .tama-tray-actions {
+    display: flex;
+    gap: 2px;
   }
   .tama-trash-action {
-    width: 34px;
-    height: 34px;
+    width: 26px;
+    height: 26px;
     padding: 0;
-    border-radius: 10px;
-    font-size: 15px;
-    background: rgba(255,255,255,0.72);
+    border-radius: 6px;
+    background: transparent;
     color: var(--color-text-muted, #8a7d6d);
-    border: 1px solid rgba(108, 82, 55, 0.15);
-    box-shadow: none;
+    border: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
   }
   .tama-trash-action:hover {
-    background: rgba(255,255,255,0.7);
+    background: rgba(0,0,0,0.06);
     color: var(--color-text, #3d3225);
   }
+  .tama-trash-action--drop {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  .tama-trash-action--drop.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    color: var(--tama-stat-bad, #c94a4a);
+  }
 
+  /* Bottom row: 3 equal buttons in a grid */
   .tama-tray-items {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-top: 1px solid rgba(108, 82, 55, 0.1);
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    overflow: hidden;
+    background: rgba(255,255,255,0.5);
   }
 
   .tama-tray-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 10px 6px 8px;
-    border: 1px solid rgba(108, 82, 55, 0.12);
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,236,222,0.92));
+    gap: 3px;
+    padding: 6px 4px 5px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
     cursor: grab; user-select: none;
-    transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-    text-align: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
     touch-action: none;
   }
-  .tama-tray-item:hover {
-    background: linear-gradient(180deg, #fffdf9, #f6e7d6);
-    transform: translateY(-1px);
-    box-shadow: 0 10px 20px rgba(93, 70, 48, 0.08);
+  .tama-tray-item + .tama-tray-item {
+    border-left: 1px solid rgba(108, 82, 55, 0.1);
   }
-  .tama-tray-item:active { transform: scale(0.95); cursor: grabbing; }
+  .tama-tray-item:hover {
+    background: rgba(255,255,255,0.85);
+  }
+  .tama-tray-item:active { transform: scale(0.97); cursor: grabbing; }
   .tama-tray-item.is-selected {
-    border-color: rgba(139, 99, 71, 0.45);
-    box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.22);
+    background: rgba(255,255,255,0.82);
+    box-shadow: inset 0 -2px 0 rgba(139, 99, 71, 0.45);
+  }
+
+  /* Top part of each button: icon + name */
+  .tama-tray-item-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .tama-tray-icon {
-    font-size: 22px;
-    background: radial-gradient(circle at 30% 30%, #fff7ef, #f0dcc6);
-    border-radius: 12px;
-    width: 42px;
-    height: 42px;
+    color: #6b4430;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    line-height: 1;
-    border: 1px solid rgba(108, 82, 55, 0.1);
+    flex-shrink: 0;
   }
-  .tama-tray-label { font-size: 11px; color: var(--color-text, #2c2420); font-weight: 700; }
+  .tama-tray-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .tama-tray-label { font-size: 10px; color: var(--color-text, #2c2420); font-weight: 600; }
   .tama-tray-variant {
-    font-size: 12px;
-    min-width: 22px;
-    height: 18px;
+    font-size: 10px;
+    min-width: 16px;
+    height: 16px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.72);
-    border: 1px solid rgba(108, 82, 55, 0.12);
+    background: rgba(0,0,0,0.05);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    margin-left: auto;
     color: #6e5137;
+  }
+  .tama-tray-variant svg {
+    width: 14px;
+    height: 14px;
+  }
+  .tama-tray-options {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 14px;
+  }
+  .tama-tray-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 2px;
+    border-radius: 999px;
+    color: rgba(110, 81, 55, 0.52);
+    opacity: 0.78;
+    transform: scale(0.88);
+    transition: transform 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+  }
+  .tama-tray-option svg {
+    width: 11px;
+    height: 11px;
+  }
+  .tama-tray-option.is-active {
+    color: #6e5137;
+    opacity: 1;
+    transform: scale(1);
   }
   .tama-ui-pellets {
     position: relative;
@@ -1222,6 +1828,76 @@
   .tama-tray-variant.is-active {
     background: linear-gradient(180deg, #fff6ec, #efd6ba);
     border-color: rgba(139, 99, 71, 0.3);
+  }
+
+  .tama-widget-nav {
+    display: none;
+    gap: 0;
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+    border-bottom: 1px solid rgba(108, 82, 55, 0.12);
+    background: linear-gradient(180deg, rgba(116, 88, 61, 0.08), rgba(116, 88, 61, 0.03));
+  }
+  .tama-widget-button {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 8px 12px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: rgba(84, 62, 42, 0.7);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transform: none !important;
+    box-shadow: none !important;
+    transition: background 0.16s ease, color 0.16s ease;
+  }
+  .tama-widget-button + .tama-widget-button {
+    border-left: 1px solid rgba(108, 82, 55, 0.1);
+  }
+  .tama-widget-button:hover {
+    background: rgba(255,255,255,0.25);
+    color: #5d3e27;
+  }
+  .tama-widget-button.is-active {
+    background: rgba(255,255,255,0.56);
+    color: #5d3e27;
+    box-shadow: inset 0 -2px 0 #8b6347 !important;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-tray,
+  .tama-panel[data-ui-mode="widget"] .tama-content {
+    display: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .tama-panel[data-ui-mode="widget"][data-widget-view="tools"] .tama-tray {
+    display: block;
+  }
+  .tama-panel[data-ui-mode="widget"][data-widget-view="cats"] .tama-content,
+  .tama-panel[data-ui-mode="widget"][data-widget-view="feed"] .tama-content {
+    display: flex;
+  }
+  .tama-panel[data-ui-mode="widget"] .tama-feed {
+    display: none;
+  }
+  .tama-panel[data-ui-mode="widget"][data-widget-view="cats"] .tama-cats-list {
+    display: block;
+  }
+  .tama-panel[data-ui-mode="widget"][data-widget-view="feed"] .tama-cats-list {
+    display: none;
+  }
+  .tama-panel[data-ui-mode="widget"][data-widget-view="feed"] .tama-feed {
+    display: flex;
+    border-top: none;
+    padding-top: 0;
   }
 
 
@@ -1275,6 +1951,90 @@
   .tama-cursor-preview .tama-ui-pellet--b { left: 5px; top: 1px; }
   .tama-cursor-preview .tama-ui-pellet--c { left: 10px; top: 8px; }
   .tama-cursor-preview .tama-ui-pellet--d { left: 14px; top: 3px; }
+  .tama-ask-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    z-index: 9997;
+    overflow: visible;
+  }
+  .tama-ask-indicator {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 11px;
+    border-radius: 999px;
+    background: rgba(255, 251, 246, 0.96);
+    border: 1px solid rgba(108, 82, 55, 0.16);
+    box-shadow: 0 16px 28px rgba(50, 34, 19, 0.16);
+    color: #5d3e27;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    animation: tamaAskBloom 1.65s cubic-bezier(0.18, 0.84, 0.24, 1) forwards;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .tama-ask-indicator::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 999px;
+    border: 2px solid rgba(212, 165, 116, 0.32);
+    animation: tamaAskRing 1.65s ease-out forwards;
+  }
+  .tama-ask-indicator-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(212, 165, 116, 0.18);
+    font-size: 13px;
+  }
+  .tama-ask-indicator-text {
+    display: inline-flex;
+    align-items: center;
+  }
+  @keyframes tamaAskBloom {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -38%) scale(0.82);
+    }
+    14% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    72% {
+      opacity: 1;
+      transform: translate(-50%, -88%) scale(1.02);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -126%) scale(1.05);
+    }
+  }
+  @keyframes tamaAskRing {
+    0% {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+    12% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.38);
+    }
+  }
   main.tama-main-armed {
     cursor: none;
   }
@@ -1290,18 +2050,68 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .tama-feed-title {
-    font-size: 11px; font-weight: 700;
-    color: var(--color-text-muted, #8a7d6d);
-    text-transform: uppercase; letter-spacing: 0.05em;
-    margin-bottom: 4px;
-  }
   .tama-feed-list { flex: 1; min-height: 60px; overflow-y: auto; }
   .tama-feed-item {
     font-size: 11px; color: var(--color-text-muted, #8a7d6d);
     padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.04);
   }
   .tama-feed-item:last-child { border-bottom: none; }
+
+  .tama-hint-indicator {
+    position: absolute;
+    width: min(340px, calc(100% - 32px));
+    min-width: min(220px, calc(100% - 32px));
+    padding: 11px 14px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.98), rgba(253, 230, 138, 0.98));
+    border: 1px solid rgba(180, 140, 50, 0.26);
+    box-shadow: 0 18px 34px rgba(87, 64, 28, 0.18);
+    color: #4a3520;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    transform: translate(-50%, -50%);
+    animation: tamaHintFloat 5.8s cubic-bezier(0.18, 0.84, 0.24, 1) forwards;
+  }
+  .tama-hint-indicator::before {
+    content: 'Tip';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 251, 234, 0.72);
+    border: 1px solid rgba(180, 140, 50, 0.18);
+    color: #7b5a20;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  @keyframes tamaHintFloat {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -42%) scale(0.92);
+    }
+    10% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    82% {
+      opacity: 1;
+      transform: translate(-50%, -84%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -116%) scale(1.02);
+    }
+  }
 
   /* ══ Care popup ═════════════════════════════════════════ */
 
@@ -1320,10 +2130,20 @@
     line-height: 1.3;
   }
 
+  /* Counter-flip popup when cat faces left */
+  .kitten:not([data-facing-right="1"]) .tama-care-popup {
+    animation: tama-popup-rise-flipped 1.2s ease-out forwards;
+  }
+
   @keyframes tama-popup-rise {
     0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.5); }
     30% { opacity: 1; transform: translateX(-50%) translateY(-20px) scale(1.2); }
     100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.8); }
+  }
+  @keyframes tama-popup-rise-flipped {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.5) scaleX(-1); }
+    30% { opacity: 1; transform: translateX(-50%) translateY(-20px) scale(1.2) scaleX(-1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.8) scaleX(-1); }
   }
 
   /* ══ Dropped food item on page ══════════════════════════ */

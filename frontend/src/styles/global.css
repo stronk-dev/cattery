@@ -75,17 +75,20 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-width: 100vw;
 }
 
 .page-body {
   display: flex;
   flex: 1;
   min-height: 0;
+  overflow-x: clip;
 }
 
 .page-body > main {
   flex: 1;
   min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   position: relative;
 }
@@ -93,6 +96,7 @@ body {
 .page-content {
   position: relative;
   z-index: 0;
+  overflow-x: clip;
 }
 
 img {
@@ -150,10 +154,24 @@ h3 { font-size: clamp(1.2rem, 2vw + 0.3rem, 1.55rem); }
 
 .section-title {
   margin-bottom: var(--space-lg);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.section-subtitle,
+.section-cta,
+.btn {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .text-center {
   text-align: center;
+}
+
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .visually-hidden {
