@@ -257,7 +257,9 @@ add_field katten '{"field":"rol","type":"string","meta":{"interface":"select-dro
 add_field katten '{"field":"beschrijving","type":"text","meta":{"interface":"input-rich-text-html","display":"raw","width":"full","sort":10,"translations":[{"language":"nl-NL","translation":"Beschrijving"}]},"schema":{}}'
 add_field katten '{"field":"gezondheid_info","type":"text","meta":{"interface":"input-rich-text-html","display":"raw","width":"full","sort":11,"translations":[{"language":"nl-NL","translation":"Gezondheid Info"}]},"schema":{}}'
 add_field katten '{"field":"foto","type":"uuid","meta":{"interface":"file-image","display":"image","width":"half","sort":12,"translations":[{"language":"nl-NL","translation":"Hoofdfoto"}]},"schema":{}}'
-add_field katten '{"field":"sort","type":"integer","meta":{"interface":"input","hidden":true,"sort":14},"schema":{}}'
+add_field katten '{"field":"persoonlijkheid","type":"string","meta":{"interface":"select-dropdown","display":"labels","width":"half","sort":13,"note":"Persoonlijkheid voor de tamagotchi katten op de website","options":{"choices":[{"text":"Lui","value":"lazy"},{"text":"Speels","value":"playful"},{"text":"Nieuwsgierig","value":"curious"},{"text":"Eigenwijs","value":"sassy"}],"allowNone":true},"translations":[{"language":"nl-NL","translation":"Persoonlijkheid"}]},"schema":{}}'
+add_field katten '{"field":"vacht_index","type":"integer","meta":{"interface":"select-dropdown","display":"raw","width":"half","sort":14,"note":"Vachtkleur voor de tamagotchi kat (0-5)","options":{"choices":[{"text":"Oranje","value":"0"},{"text":"Zwart","value":"1"},{"text":"Blauw","value":"2"},{"text":"Lilac","value":"3"},{"text":"Chocolade","value":"4"},{"text":"Crème","value":"5"},{"text":"Wit","value":"6"},{"text":"Rood","value":"7"},{"text":"Cinnamon","value":"8"},{"text":"Blauwgrijs licht","value":"9"}],"allowNone":true},"translations":[{"language":"nl-NL","translation":"Vacht Kleur Index"}]},"schema":{}}'
+add_field katten '{"field":"sort","type":"integer","meta":{"interface":"input","hidden":true,"sort":15},"schema":{}}'
 echo "  - katten"
 
 # --- nesten ---
@@ -282,7 +284,9 @@ add_field kittens '{"field":"status","type":"string","meta":{"interface":"select
 add_field kittens '{"field":"beschrijving","type":"text","meta":{"interface":"input-rich-text-html","display":"raw","width":"full","sort":6,"translations":[{"language":"nl-NL","translation":"Beschrijving"}]},"schema":{}}'
 add_field kittens '{"field":"nest","type":"integer","meta":{"interface":"select-dropdown-m2o","display":"related-values","width":"half","sort":7,"display_options":{"template":"{{naam}}"},"translations":[{"language":"nl-NL","translation":"Nest"}]},"schema":{}}'
 add_field kittens '{"field":"foto","type":"uuid","meta":{"interface":"file-image","display":"image","width":"half","sort":8,"translations":[{"language":"nl-NL","translation":"Hoofdfoto"}]},"schema":{}}'
-add_field kittens '{"field":"sort","type":"integer","meta":{"interface":"input","hidden":true,"sort":10},"schema":{}}'
+add_field kittens '{"field":"persoonlijkheid","type":"string","meta":{"interface":"select-dropdown","display":"labels","width":"half","sort":9,"note":"Persoonlijkheid voor de tamagotchi katten op de website","options":{"choices":[{"text":"Lui","value":"lazy"},{"text":"Speels","value":"playful"},{"text":"Nieuwsgierig","value":"curious"},{"text":"Eigenwijs","value":"sassy"}],"allowNone":true},"translations":[{"language":"nl-NL","translation":"Persoonlijkheid"}]},"schema":{}}'
+add_field kittens '{"field":"vacht_index","type":"integer","meta":{"interface":"select-dropdown","display":"raw","width":"half","sort":10,"note":"Vachtkleur voor de tamagotchi kat (0-9)","options":{"choices":[{"text":"Oranje","value":"0"},{"text":"Zwart","value":"1"},{"text":"Blauw","value":"2"},{"text":"Lilac","value":"3"},{"text":"Chocolade","value":"4"},{"text":"Crème","value":"5"},{"text":"Wit","value":"6"},{"text":"Rood","value":"7"},{"text":"Cinnamon","value":"8"},{"text":"Blauwgrijs licht","value":"9"}],"allowNone":true},"translations":[{"language":"nl-NL","translation":"Vacht Kleur Index"}]},"schema":{}}'
+add_field kittens '{"field":"sort","type":"integer","meta":{"interface":"input","hidden":true,"sort":11},"schema":{}}'
 echo "  - kittens"
 
 # --- blog_berichten ---

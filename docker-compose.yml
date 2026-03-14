@@ -25,7 +25,7 @@ services:
       CACHE_TTL: "5m"
       FILES_MAX_UPLOAD_SIZE: "20mb"
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:8055/server/health || exit 1
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8055/server/health || exit 1
       interval: 15s
       timeout: 5s
       retries: 3
@@ -48,7 +48,28 @@ services:
     ports:
       - "127.0.0.1:18032:18032"
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:18032/api/health || exit 1
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:18032/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  game:
+    build: ./game-server
+    ports:
+      - "127.0.0.1:18033:18033"
+    volumes:
+      - ./game-server/data:/app/data
+    environment:
+      PORT: "18033"
+      DB_PATH: "/app/data/game.db"
+      DIRECTUS_URL: "http://directus:8055"
+      GAME_ADMIN_TOKEN: "${GAME_ADMIN_TOKEN:-}"
+    depends_on:
+      directus:
+        condition: service_healthy
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:18033/game/health || exit 1
       interval: 15s
       timeout: 5s
       retries: 3
@@ -66,6 +87,7 @@ services:
       - caddy_config:/config
     depends_on:
       - steward
+      - game
     restart: unless-stopped
 
 volumes:

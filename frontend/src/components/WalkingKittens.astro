@@ -21,6 +21,7 @@
         <div class="kitten-leg kitten-leg--bl"></div>
         <div class="kitten-leg kitten-leg--br"></div>
       </div>
+      <div class="kitten-name"></div>
     </div>
   </template>
   <template id="yarn-template">
@@ -31,28 +32,44 @@
 </div>
 
 <script>
+  import { tamagotchi, type CareVariant, type TamagotchiCat } from '../lib/tamagotchi';
+
   const stage = document.getElementById('kittens-stage')!;
   const kittenTpl = document.getElementById('kitten-template') as HTMLTemplateElement;
   const yarnTpl = document.getElementById('yarn-template') as HTMLTemplateElement;
+  const mainEl = document.getElementById('main')!;
+
+  // Main-relative coordinates (cats live inside main, scroll with content)
+  const mainW = () => mainEl.clientWidth;
+  const mainH = () => mainEl.scrollHeight;
+  const mainScrollY = () => mainEl.scrollTop;
+  const mainViewH = () => mainEl.clientHeight;
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reducedMotion) stage.style.display = 'none';
 
   /* ═══ Config ═══════════════════════════════════════════ */
 
+  // Index: 0=Oranje, 1=Zwart, 2=Blauw/Grijs, 3=Lilac, 4=Chocolade, 5=Crème,
+  //        6=Wit, 7=Rood/Ginger, 8=Cinnamon, 9=Cyaan/Blauwgrijs licht
   const FUR = [
-    { fur: '#e8943a', dark: '#c67520', eye: '#4a8c3f' },
-    { fur: '#3a3a3a', dark: '#1a1a1a', eye: '#d4a017' },
-    { fur: '#9e9e9e', dark: '#6e6e6e', eye: '#5c8a4d' },
-    { fur: '#f5e6d0', dark: '#d4c0a0', eye: '#5b88c9' },
-    { fur: '#8b6347', dark: '#6d4c35', eye: '#4a8c3f' },
-    { fur: '#d4a574', dark: '#b8864e', eye: '#7a6b5d' },
+    { fur: '#e8943a', dark: '#c67520', eye: '#4a8c3f' },  // 0: Oranje
+    { fur: '#3a3a3a', dark: '#1a1a1a', eye: '#d4a017' },  // 1: Zwart
+    { fur: '#8e9eaa', dark: '#6a7a88', eye: '#d4a017' },  // 2: Blauw (BSH blue)
+    { fur: '#c4b0b8', dark: '#a08a94', eye: '#d4a017' },  // 3: Lilac
+    { fur: '#6b4430', dark: '#4d2f1e', eye: '#4a8c3f' },  // 4: Chocolade
+    { fur: '#f5e6d0', dark: '#d4c0a0', eye: '#5b88c9' },  // 5: Crème
+    { fur: '#f0ece6', dark: '#d4cfc8', eye: '#5b88c9' },  // 6: Wit
+    { fur: '#d4734a', dark: '#b85a30', eye: '#4a8c3f' },  // 7: Rood
+    { fur: '#b87a50', dark: '#956038', eye: '#4a8c3f' },  // 8: Cinnamon
+    { fur: '#a8b8c4', dark: '#8898a4', eye: '#5c8a4d' },  // 9: Blauwgrijs licht
   ];
 
   const YARN_COLORS = ['#cc3333', '#3366bb', '#339944', '#cc7733', '#9944aa'];
   const PERSONALITIES = ['lazy', 'playful', 'curious', 'sassy'] as const;
   type Personality = typeof PERSONALITIES[number];
   type Behavior = 'walk' | 'sit' | 'playbow' | 'pounce' | 'groom' | 'nap' | 'zoomies' | 'stalk';
+  type ItemKind = 'food' | 'yarn' | 'brush';
 
   const BWEIGHTS: Record<Personality, Partial<Record<Behavior, number>>> = {
     lazy:    { sit: 3, groom: 3, nap: 4, stalk: 1, zoomies: 0.5 },
@@ -81,6 +98,53 @@
   let activeKittens = 0;
   const STATIONARY: Behavior[] = ['sit', 'playbow', 'pounce', 'groom', 'nap'];
 
+  /* ═══ Activity system (higher-level than behaviors) ══ */
+
+  // Activities last 30s–3min and constrain which behaviors a cat picks
+  type Activity = 'explore' | 'lounge' | 'alert' | 'play' | 'social';
+
+  const ACTIVITY_DUR: Record<Activity, [number, number]> = {
+    explore: [1800, 5400],   // 30s–90s: wander the page
+    lounge:  [3600, 10800],  // 60s–180s: find a spot, settle
+    alert:   [600, 2400],    // 10s–40s: sit and stare
+    play:    [900, 3600],    // 15s–60s: playful energy
+    social:  [1200, 3600],   // 20s–60s: seek other cats
+  };
+
+  // Which behaviors each activity favors
+  const ACTIVITY_WEIGHTS: Record<Activity, Partial<Record<Behavior, number>>> = {
+    explore: { stalk: 4, walk: 3, sit: 1, nap: 0.5 },
+    lounge:  { sit: 5, nap: 5, groom: 3 },
+    alert:   { sit: 8, stalk: 2, nap: 1 },
+    play:    { playbow: 4, pounce: 3, zoomies: 2, stalk: 1 },
+    social:  { walk: 3, stalk: 2, groom: 2, sit: 1, nap: 0.5 },
+  };
+
+  // Activity weights per personality (what activities they prefer)
+  const PERSONALITY_ACTIVITIES: Record<Personality, Partial<Record<Activity, number>>> = {
+    lazy:    { lounge: 5, alert: 3, explore: 1, social: 1, play: 0.5 },
+    playful: { play: 4, explore: 3, social: 2, alert: 1, lounge: 1 },
+    curious: { explore: 5, alert: 3, social: 2, play: 1, lounge: 1 },
+    sassy:   { lounge: 3, alert: 4, explore: 2, social: 1, play: 1 },
+  };
+
+  const ACTIVITY_THOUGHT: Record<Activity, string> = {
+    explore: '🔍',
+    lounge:  '💤',
+    alert:   '👁️',
+    play:    '⚡',
+    social:  '💭',
+  };
+
+  function pickActivity(p: Personality): Activity {
+    const w = PERSONALITY_ACTIVITIES[p];
+    const entries = Object.entries(w) as [Activity, number][];
+    const total = entries.reduce((s, [, v]) => s + v, 0);
+    let r = Math.random() * total;
+    for (const [a, v] of entries) { r -= v; if (r <= 0) return a; }
+    return 'explore';
+  }
+
   /* ═══ State ════════════════════════════════════════════ */
 
   interface KState {
@@ -88,6 +152,7 @@
     x: number; y: number;
     vx: number; vy: number;
     baseVx: number;
+    baseVy: number;
     savedVx: number;
     baseY: number;
     personality: Personality;
@@ -97,19 +162,78 @@
     normalWalk: number;
     origTail: string;
     noBehaviors: boolean;
+    // Activity (higher-level mood)
+    activity: Activity;
+    activityTimer: number;
+    // Tamagotchi fields (undefined = ambient cat)
+    tamagotchiId?: string;
+    tamagotchiName?: string;
+    shooed?: boolean;
+    shooCount?: number;
+    leaveSoonFrames?: number;
+    scaredFrames?: number;
+    scaredDir?: -1 | 1;
+    startleCooldown?: number;
+    askCooldown: number;
+    // Lured ambient cats: target to path toward
+    lureTarget?: { x: () => number; y: () => number; alive: () => boolean };
   }
 
   interface YarnState {
     el: HTMLElement;
     x: number; y: number;
     vx: number;
+    vy: number;
+    cruiseSpeed: number;
+    boostSpeed: number;
+    driftDirX: number;
+    driftDirY: number;
+    variant: CareVariant;
+    targetCatId?: string;
+    cooldown: number;
   }
 
   const cats: KState[] = [];
   const yarns: YarnState[] = [];
   let mx = -9999, my = -9999;
+  let cursorSpeed = 0;
+  let lastMouseX = -9999;
+  let lastMouseY = -9999;
+  let lastMouseAt = 0;
 
-  document.addEventListener('mousemove', (e) => { mx = e.pageX; my = e.pageY; });
+  /* ═══ Tamagotchi integration ═════════════════════════════ */
+
+  // Track which tamagotchi cats are currently on screen
+  const onScreenTamagotchi = new Set<string>();
+
+  // Stage → size range mapping
+  const STAGE_SIZE: Record<string, [number, number]> = {
+    kitten: [35, 50],
+    adult:  [75, 95],
+    elder:  [80, 90],
+  };
+
+  const STAGE_SPEED: Record<string, [number, number]> = {
+    kitten: [2.5, 5.5],
+    adult:  [1.5, 4.5],
+    elder:  [0.8, 2.0],
+  };
+
+  document.addEventListener('mousemove', (e) => {
+    const rect = mainEl.getBoundingClientRect();
+    const now = performance.now();
+    if (lastMouseAt > 0) {
+      const dt = Math.max(16, now - lastMouseAt);
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+      cursorSpeed = Math.hypot(dx, dy) / (dt / 16.67);
+    }
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    lastMouseAt = now;
+    mx = e.clientX - rect.left;
+    my = e.clientY - rect.top + mainEl.scrollTop;
+  });
 
   function rand(a: number, b: number) { return Math.random() * (b - a) + a; }
   function pick<T>(arr: readonly T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -139,9 +263,19 @@
     k.el.dataset.behavior = b;
 
     switch (b) {
-      case 'sit': case 'playbow': case 'pounce': case 'groom': case 'nap':
+      case 'sit': case 'groom': case 'nap':
         k.savedVx = k.baseVx;
         k.baseVx = 0;
+        k.baseVy = 0;
+        k.vx = 0;
+        k.vy = 0;
+        break;
+      case 'playbow': case 'pounce':
+        k.savedVx = k.baseVx;
+        k.baseVx = 0;
+        k.baseVy = 0;
+        k.vx *= 0.35;
+        k.vy *= 0.35;
         break;
       case 'stalk':
         k.savedVx = k.baseVx;
@@ -161,11 +295,25 @@
   function exitBehavior(k: KState) {
     const prev = k.behavior;
     k.behavior = 'walk';
-    k.walkTimer = Math.floor(rand(300, 600));
     delete k.el.dataset.behavior;
     k.el.dataset.tail = k.origTail;
 
     if (prev !== 'walk') k.baseVx = k.savedVx;
+
+    // Lounging cats: very short walks between stationary behaviors (repositioning)
+    if (k.activity === 'lounge') {
+      k.walkTimer = Math.floor(rand(60, 180)); // ~1-3 seconds
+    } else {
+      k.walkTimer = Math.floor(rand(300, 600));
+    }
+
+    // Stretch after nap (brief playbow before walking)
+    if (prev === 'nap' && k.tamagotchiId) {
+      enterBehavior(k, 'playbow');
+      k.bTimer = Math.floor(rand(60, 120)); // short stretch
+      showPopup(k.el, '🥱');
+      return; // don't do exit bursts
+    }
 
     // Exit bursts
     if (prev === 'playbow') { k.vx += Math.sign(k.baseVx || 1) * 15; k.vy -= 4; }
@@ -177,6 +325,22 @@
   function tick() {
     for (let i = cats.length - 1; i >= 0; i--) {
       const k = cats[i];
+      if (k.startleCooldown && k.startleCooldown > 0) k.startleCooldown--;
+      if (k.scaredFrames && k.scaredFrames > 0) k.scaredFrames--;
+      if (k.leaveSoonFrames && k.leaveSoonFrames > 0) {
+        k.leaveSoonFrames--;
+        if (k.leaveSoonFrames <= 0 && !k.shooed) {
+          k.shooed = true;
+          if (k.behavior !== 'walk') exitBehavior(k);
+          const leaveDir = k.x < mainW() * 0.5 ? -1 : 1;
+          k.baseVx = leaveDir * rand(4.5, 6.5);
+          k.savedVx = k.baseVx;
+          k.vx = leaveDir * rand(3.5, 5.5);
+          showPopup(k.el, '👋');
+        }
+      }
+      const isLeaving = !!k.shooed;
+      const isScared = !!(k.scaredFrames && k.scaredFrames > 0);
       const dx = k.x - mx;
       const dy = k.y - my;
       const dist = Math.hypot(dx, dy);
@@ -186,25 +350,40 @@
         k.vx -= (dx / dist) * 0.5;
         k.vy -= (dy / dist) * 0.15;
       }
-      // Nap: wake up if cursor close
-      else if (k.behavior === 'nap' && dist < AVOID_R * 0.7) {
+      // Nap: wake up if cursor close (ambient only — tama cats sleep through it)
+      else if (!k.tamagotchiId && k.behavior === 'nap' && dist < AVOID_R * 0.7) {
         exitBehavior(k);
       }
 
-      // Normal cursor avoidance (not during stalk)
+      // Cursor avoidance
+      // Tamagotchi cats are tame: no avoidance when sitting/napping/grooming,
+      // very weak avoidance when walking (they're approachable)
+      // Ambient cats: full avoidance as before
       if (k.behavior !== 'stalk' && dist < AVOID_R && dist > 1) {
-        const str = ((AVOID_R - dist) / AVOID_R) * AVOID_F;
-        let fx = (dx / dist) * str;
-        let fy = (dy / dist) * str;
-        fy *= 0.35;
-        if (Math.abs(fx) < 0.5) fx = Math.sign(fx || k.baseVx || 1) * 0.5;
-        k.vx += fx;
-        k.vy += fy;
+        let avoidForce = AVOID_F;
+        if (k.tamagotchiId) {
+          // Tame cats — stationary behaviors: no avoidance at all
+          if (STATIONARY.includes(k.behavior)) {
+            avoidForce = 0;
+          } else {
+            // Walking: very gentle avoidance so they're clickable
+            avoidForce = AVOID_F * 0.15;
+          }
+        }
+        if (avoidForce > 0) {
+          const str = ((AVOID_R - dist) / AVOID_R) * avoidForce;
+          let fx = (dx / dist) * str;
+          let fy = (dy / dist) * str;
+          fy *= 0.35;
+          if (Math.abs(fx) < 0.5) fx = Math.sign(fx || k.baseVx || 1) * 0.5;
+          k.vx += fx;
+          k.vy += fy;
+        }
       }
 
       // If cursor pushes kitten backwards, permanently flip direction
       // so it commits to walking away instead of oscillating
-      if (k.behavior === 'walk' && Math.abs(k.vx) > 2) {
+      if (k.behavior === 'walk' && !isLeaving && !isScared && Math.abs(k.vx) > 2) {
         const totalVxNow = k.baseVx + k.vx;
         if (Math.sign(totalVxNow) !== Math.sign(k.baseVx) && Math.sign(totalVxNow) !== 0) {
           k.baseVx = -k.baseVx;
@@ -212,16 +391,207 @@
         }
       }
 
-      // Break stationary behaviors if pushed hard
-      if (STATIONARY.includes(k.behavior) && Math.hypot(k.vx, k.vy) > 4.5) {
+      // Only spring out of pounce/playbow when momentum is high.
+      // Sit/groom/nap should not silently turn into "sliding while posed".
+      if ((k.behavior === 'playbow' || k.behavior === 'pounce') && Math.hypot(k.vx, k.vy) > 4.5) {
         exitBehavior(k);
       }
 
+      if (k.askCooldown > 0) k.askCooldown--;
+
+      // Force rest / ask behavior only when cat is not in a panic or leave state.
+      if (k.tamagotchiId && !isScared && !isLeaving) {
+        const cd = getTamagotchiData(k.tamagotchiId);
+        if (cd) {
+          const nearbyFood = foodItems.some((food) =>
+            !food.eaten &&
+            !food.gone &&
+            (!food.targetCatId || food.targetCatId === k.tamagotchiId) &&
+            Math.hypot(food.x - k.x, food.y - k.y) < 420
+          );
+
+          if (cd.energy < 15) {
+            // Critically tired — force nap, stay asleep
+            if (k.behavior !== 'nap') {
+              if (k.behavior !== 'walk') exitBehavior(k);
+              enterBehavior(k, 'nap');
+              k.bTimer = 9999; // stay asleep until fed/interacted
+            }
+            k.activity = 'lounge';
+            k.activityTimer = 9999;
+          } else if (cd.energy < 50 && k.activity !== 'lounge') {
+            k.activity = 'lounge';
+            k.activityTimer = Math.floor(rand(3600, 10800));
+            if (k.behavior === 'walk') {
+              enterBehavior(k, cd.energy < 30 ? 'nap' : 'sit');
+            }
+          } else if (cd.happiness < 35 && k.activity !== 'lounge') {
+            k.activity = 'lounge';
+            k.activityTimer = Math.floor(rand(3600, 10800));
+          }
+
+          const cursorActive = mx > -5000 && my > -5000;
+          const focusX = cursorActive ? mx : mainW() * 0.5;
+          const focusY = cursorActive ? my : (mainScrollY() + mainViewH() * 0.55);
+          const bondedNearby = cats.some((other) =>
+            other !== k &&
+            other.tamagotchiId &&
+            k.tamagotchiId &&
+            Math.hypot(other.x - k.x, other.y - k.y) < 220 &&
+            getBondAffinity(k.tamagotchiId, other.tamagotchiId) > 25
+          );
+
+          if (cd.hunger < (k.personality === 'lazy' ? 22 : 35) && k.behavior !== 'nap' && !nearbyFood) {
+            const demandDist = Math.hypot(focusX - k.x, focusY - k.y);
+            if (k.behavior === 'sit' && demandDist > 120) {
+              exitBehavior(k);
+            }
+            if (k.behavior === 'walk' || k.behavior === 'stalk' || k.behavior === 'sit') {
+              const distToFocus = nudgeToward(k, focusX, focusY, 0.22, 0.08, 95);
+              if (k.behavior === 'walk' && distToFocus < 110 && Math.abs(k.vx) < 1.2 && Math.random() < 0.03) {
+                enterBehavior(k, 'sit');
+                k.bTimer = Math.max(k.bTimer, 150);
+              }
+            }
+            if (k.askCooldown <= 0 && (cursorActive || Math.abs(focusY - k.y) < 300)) {
+              showPopup(k.el, k.personality === 'sassy' ? '😾' : '🍽️');
+              emitTamaSound('ask-food', { catId: k.tamagotchiId, personality: k.personality });
+              k.askCooldown = Math.floor(rand(420, 840));
+            }
+          } else if (cd.happiness < 45 && !bondedNearby && k.behavior !== 'nap') {
+            const attentionDist = Math.hypot(focusX - k.x, focusY - k.y);
+            if (k.behavior === 'sit' && attentionDist > 145) {
+              exitBehavior(k);
+            }
+            if (k.behavior === 'walk' || k.behavior === 'sit') {
+              const distToFocus = nudgeToward(k, focusX, focusY, 0.18, 0.06, 125);
+              if (k.behavior === 'walk' && distToFocus < 138 && Math.abs(k.vx) < 1 && Math.random() < 0.025) {
+                enterBehavior(k, 'sit');
+                k.bTimer = Math.max(k.bTimer, 180);
+              }
+            }
+            if (k.behavior === 'walk' && Math.abs(focusX - k.x) < 110 && Math.random() < 0.015) {
+              enterBehavior(k, 'sit');
+              k.bTimer = Math.max(k.bTimer, 180);
+            }
+            if (k.askCooldown <= 0) {
+              showPopup(k.el, k.personality === 'sassy' ? '😼' : '🥺');
+              emitTamaSound('ask-attention', { catId: k.tamagotchiId, personality: k.personality });
+              k.askCooldown = Math.floor(rand(520, 960));
+            }
+          } else if (k.personality === 'curious' && k.activity === 'explore' && k.behavior === 'walk' && cursorActive) {
+            nudgeToward(k, focusX, focusY, 0.1, 0.03, 130);
+          }
+        }
+      }
+
+      // Activity timer (tick down, pick new activity when expired)
+      if (!isScared && !isLeaving && k.activityTimer > 0) {
+        k.activityTimer--;
+        if (k.activityTimer <= 0) {
+          const prev = k.activity;
+          k.activity = pickActivity(k.personality);
+          const [aLo, aHi] = ACTIVITY_DUR[k.activity];
+          k.activityTimer = Math.floor(rand(aLo, aHi));
+          // Thought bubble on activity change
+          if (k.activity !== prev && k.tamagotchiId) {
+            showPopup(k.el, ACTIVITY_THOUGHT[k.activity]);
+          }
+        }
+      }
+
+      // Activity-specific movement tweaks
+      if (!isScared && !isLeaving && k.activity === 'explore' && k.behavior === 'walk') {
+        // Exploring: roam the full page, change direction and altitude
+        if (Math.random() < 0.005) {
+          k.baseVx = -k.baseVx;
+          k.savedVx = -k.savedVx;
+        }
+        // Exploring cats have stronger vertical movement
+        if (Math.random() < 0.006) {
+          k.baseVy = rand(-1.5, 1.5);
+        }
+        // Ensure cat is actually moving, not stuck
+        if (Math.abs(k.baseVx + k.vx) < 0.3) {
+          k.baseVx = (Math.random() > 0.5 ? 1 : -1) * rand(1.5, 3);
+          k.savedVx = k.baseVx;
+        }
+      }
+      // Stuck detection for all cats — if walking but barely moving, unstick
+      if (!isScared && !isLeaving && k.behavior === 'walk') {
+        const totalSpeed = Math.abs(k.baseVx + k.vx);
+        if (totalSpeed < 0.3) {
+          // Stuck — flip direction and push
+          k.baseVx = -k.baseVx || (Math.random() > 0.5 ? 2 : -2);
+          k.savedVx = k.baseVx;
+          k.vx = k.baseVx * 0.5;
+          if (k.tamagotchiId) k.vy += rand(-1, 1);
+        }
+      }
+      if (!isScared && !isLeaving && k.activity === 'lounge' && k.behavior === 'walk') {
+        // Lounging: walk very slowly for repositioning, then settle again quickly
+        k.baseVx *= 0.97;
+        k.walkTimer = Math.min(k.walkTimer, 120); // short repositioning walks
+      }
+      if (!isScared && !isLeaving && k.activity === 'alert' && k.behavior === 'sit') {
+        // Alert sitting: face the cursor (stare)
+        const adx = mx - k.x;
+        if (Math.abs(adx) > 10) {
+          k.el.dataset.facingRight = adx > 0 ? '1' : '';
+        }
+      }
+
+      // ── Personality quirks (tamagotchi cats only) ──────────
+      if (k.tamagotchiId && !isScared && !isLeaving && k.behavior === 'walk') {
+        // Playful: random zoomies burst for no reason
+        if (k.personality === 'playful' && Math.random() < 0.0005) {
+          enterBehavior(k, 'zoomies');
+          showPopup(k.el, '⚡');
+        }
+
+        // Curious: randomly stop and stare at nothing ("sees a ghost")
+        if (k.personality === 'curious' && Math.random() < 0.0008) {
+          enterBehavior(k, 'stalk');
+          k.bTimer = Math.floor(rand(120, 300)); // short stare
+          showPopup(k.el, '👻');
+        }
+
+        // Sassy: randomly stop walking and sit with attitude
+        if (k.personality === 'sassy' && Math.random() < 0.0006) {
+          enterBehavior(k, 'sit');
+          k.el.dataset.tail = 'sassy';
+        }
+      }
+
+      // Startled by fast cursor movement
+      if (k.tamagotchiId && k.behavior === 'walk' && !isScared && (!k.startleCooldown || k.startleCooldown <= 0)) {
+        const cursorDist = Math.hypot(k.x - mx, k.y - my);
+        if (cursorDist < 80 && cursorSpeed > 18 && Math.abs(k.vx) < 1.5 && Math.hypot(k.baseVx, k.baseVy) < 2.5) {
+          k.vy -= rand(3, 6);
+          k.vx += (Math.random() > 0.5 ? 1 : -1) * rand(3, 6);
+          if (k.personality !== 'lazy') showPopup(k.el, '❗');
+          k.startleCooldown = 75;
+        }
+      }
+
+      // Sassy stare-down: when another cat approaches, sassy cat stares
+      if (k.tamagotchiId && k.personality === 'sassy' && k.behavior === 'sit') {
+        for (const other of cats) {
+          if (other === k || !other.tamagotchiId) continue;
+          const d = Math.hypot(other.x - k.x, other.y - k.y);
+          if (d < 100 && d > 30 && other.behavior === 'walk') {
+            // Face the approaching cat
+            k.el.dataset.facingRight = (other.x - k.x) > 0 ? '1' : '';
+            break;
+          }
+        }
+      }
+
       // Behavior timers
-      if (!k.noBehaviors) {
+      if (!isScared && !isLeaving && !k.noBehaviors) {
         if (k.behavior === 'walk') {
           k.walkTimer--;
-          if (k.walkTimer <= 0) enterBehavior(k, pickBehavior(k.personality));
+          if (k.walkTimer <= 0) enterBehavior(k, pickActivityBehavior(k));
         } else {
           k.bTimer--;
           if (k.bTimer <= 0) exitBehavior(k);
@@ -233,22 +603,99 @@
         }
       }
 
+      // Clear stale lure targets — also re-enable behaviors so cat doesn't walk in place forever
+      if (k.lureTarget && !k.lureTarget.alive()) {
+        k.lureTarget = undefined;
+        k.noBehaviors = false;
+      }
+
+      // Lure attraction: ambient cats pathing toward food/yarn
+      if (k.lureTarget) {
+        const tx = k.lureTarget.x();
+        const ty = k.lureTarget.y();
+        const ldx = tx - k.x;
+        const ldy = ty - k.y;
+        const ldist = Math.hypot(ldx, ldy);
+        if (ldist > 20) {
+          k.vx += (ldx / ldist) * 0.6;
+          k.vy += (ldy / ldist) * 0.6;
+          if (Math.abs(ldx) > 5) k.el.dataset.facingRight = ldx > 0 ? '1' : '';
+        }
+      }
+
       // Physics
+      if (isScared && k.scaredDir) {
+        if (k.behavior !== 'walk') exitBehavior(k);
+        k.baseVx = k.scaredDir * Math.max(4.2, Math.abs(k.baseVx || k.savedVx || 4.2));
+        k.savedVx = k.baseVx;
+      }
+
       k.vx *= DRAG;
       k.vy *= DRAG;
-      k.vy += (k.baseY - k.y) * Y_SPRING;
+      if ((k.behavior === 'sit' || k.behavior === 'groom' || k.behavior === 'nap') && !isScared) {
+        k.vx *= 0.18;
+        k.vy *= 0.18;
+        if (Math.abs(k.vx) < 0.08) k.vx = 0;
+        if (Math.abs(k.vy) < 0.08) k.vy = 0;
+      }
+      if (k.tamagotchiId) {
+        // Tamagotchi cats: change vertical direction periodically
+        if (!isLeaving && !isScared && k.behavior === 'walk' && Math.random() < 0.003) {
+          k.baseVy = rand(-1, 1);
+        }
+        // Bounce off Y bounds by flipping baseVy
+        if (!isLeaving) {
+          const minY = 80, maxYBound = mainH() - 80;
+          if (k.y < minY + 20) k.baseVy = Math.abs(k.baseVy) || 0.5;
+          else if (k.y > maxYBound - 20) k.baseVy = -Math.abs(k.baseVy) || -0.5;
+        }
+      } else if (k.lureTarget) {
+        // Lured cats: no Y spring, they need to freely chase their target
+      } else {
+        k.vy += (k.baseY - k.y) * Y_SPRING;
+      }
+
+      // Clamp velocity so cats don't go insanely fast
+      const MAX_V = 15;
+      k.vx = Math.max(-MAX_V, Math.min(MAX_V, k.vx));
+      k.vy = Math.max(-MAX_V, Math.min(MAX_V, k.vy));
 
       const totalVx = k.baseVx + k.vx;
+      const totalVy = (k.tamagotchiId ? k.baseVy : 0) + k.vy;
       k.x += totalVx;
-      k.y += k.vy;
+      k.y += totalVy;
 
       // Y bounds
-      const minY = 80, maxY = Math.max(document.documentElement.scrollHeight - 80, minY + 200);
-      if (k.y < minY) { k.y = minY; k.vy = Math.abs(k.vy) * 0.3; }
-      if (k.y > maxY) { k.y = maxY; k.vy = -Math.abs(k.vy) * 0.3; }
+      const minY = 80, maxY = Math.max(mainH() - 80, minY + 200);
+      if (!isLeaving) {
+        if (k.y < minY) {
+          k.y = minY;
+          if (isScared) {
+            k.baseVy = rand(0.8, 1.8);
+            k.vy = Math.max(1.5, Math.abs(k.vy)) + rand(0.6, 1.6);
+            if (Math.random() < 0.55 && k.scaredDir) k.scaredDir = (k.scaredDir * -1) as -1 | 1;
+          } else {
+            k.vy = Math.abs(k.vy) * 0.3;
+          }
+        }
+        if (k.y > maxY) {
+          k.y = maxY;
+          if (isScared) {
+            k.baseVy = -rand(0.8, 1.8);
+            k.vy = -Math.max(1.5, Math.abs(k.vy)) - rand(0.6, 1.6);
+            if (Math.random() < 0.55 && k.scaredDir) k.scaredDir = (k.scaredDir * -1) as -1 | 1;
+          } else {
+            k.vy = -Math.abs(k.vy) * 0.3;
+          }
+        }
+      }
 
-      // Flip
-      const flip = totalVx >= 0 ? '' : 'scaleX(-1)';
+      // Flip — deadzone to prevent rapid flickering
+      const flipThreshold = 0.3;
+      if (Math.abs(totalVx) > flipThreshold) {
+        k.el.dataset.facingRight = totalVx >= 0 ? '1' : '';
+      }
+      const flip = k.el.dataset.facingRight === '1' ? '' : 'scaleX(-1)';
 
       // Walk animation speed
       const spd = Math.hypot(totalVx, k.vy);
@@ -267,21 +714,135 @@
 
       k.el.style.transform = `translate(${k.x}px, ${k.y}px) ${flip}`;
 
-      // Offscreen removal
-      if (k.x < -250 || k.x > window.innerWidth + 250) {
+      // Offscreen handling
+      if (k.tamagotchiId && !isLeaving) {
+        // Tamagotchi cats stay within the visible page
+        const margin = 20;
+        // Jump over cursor if it's blocking the escape route
+        const cursorNearEdge = Math.hypot(k.x - mx, k.y - my) < 200;
+        const jumpForce = cursorNearEdge ? rand(8, 14) : rand(2, 5);
+        if (k.x < margin) {
+          k.x = margin + 10;
+          if (isScared) {
+            k.scaredDir = 1;
+            k.baseVx = rand(3.6, 5.8);
+            k.savedVx = k.baseVx;
+            k.vx = rand(2.8, 4.8);
+            k.baseVy = rand(-1.8, 1.8);
+            k.vy -= rand(4, 8);
+          } else {
+            k.baseVx = Math.abs(k.baseVx) || 3.5;
+            k.savedVx = Math.abs(k.savedVx) || k.baseVx;
+            k.vx = Math.max(3.5, Math.abs(k.vx));
+            k.vy -= jumpForce;
+          }
+        }
+        else if (k.x > mainW() - margin) {
+          k.x = mainW() - margin - 10;
+          if (isScared) {
+            k.scaredDir = -1;
+            k.baseVx = -rand(3.6, 5.8);
+            k.savedVx = k.baseVx;
+            k.vx = -rand(2.8, 4.8);
+            k.baseVy = rand(-1.8, 1.8);
+            k.vy -= rand(4, 8);
+          } else {
+            k.baseVx = -Math.abs(k.baseVx) || -3.5;
+            k.savedVx = -Math.abs(k.savedVx) || k.baseVx;
+            k.vx = -Math.max(3.5, Math.abs(k.vx));
+            k.vy -= jumpForce;
+          }
+        }
+      } else if (k.x < -250 || k.x > mainW() + 250 || k.y < mainScrollY() - 250 || k.y > mainScrollY() + mainViewH() + 250) {
+        // Ambient cats or shooed tamagotchi cats despawn
+        const wasTama = !!k.tamagotchiId;
+        if (k.tamagotchiId) onScreenTamagotchi.delete(k.tamagotchiId);
         k.el.remove(); cats.splice(i, 1); activeKittens--;
+        if (wasTama) document.dispatchEvent(new CustomEvent('tama-cats-changed'));
       }
     }
 
-    // Yarn balls
+    // Toys
     for (let i = yarns.length - 1; i >= 0; i--) {
       const y = yarns[i];
+      if (y.cooldown > 0) y.cooldown--;
+      if (y.variant === 'yarn') {
+        const speed = Math.hypot(y.vx, y.vy);
+        if (speed > 0.05) {
+          y.driftDirX = y.vx / speed;
+          y.driftDirY = y.vy / speed;
+        }
+
+        const targetSpeed = Math.max(1.4, y.boostSpeed, y.cruiseSpeed);
+        const nextSpeed =
+          speed < targetSpeed
+            ? speed + (targetSpeed - speed) * 0.22
+            : speed - (speed - targetSpeed) * 0.05;
+
+        y.vx = y.driftDirX * nextSpeed;
+        y.vy = y.driftDirY * nextSpeed;
+        y.boostSpeed = Math.max(y.cruiseSpeed, y.boostSpeed * 0.992);
+        y.el.dataset.dir = y.vx >= 0 ? 'right' : 'left';
+      } else {
+        y.vx *= 0.965;
+        y.vy = (y.vy * 0.88) + Math.sin(Date.now() / 120 + i) * 0.04 + 0.03;
+      }
+
       y.x += y.vx;
+      y.y += y.vy;
+
+      for (const k of cats) {
+        if (!k.tamagotchiId || k.behavior === 'nap') continue;
+        if (y.targetCatId && k.tamagotchiId !== y.targetCatId) continue;
+        const dist = Math.hypot(k.x - y.x, k.y - y.y);
+        if (dist > 42 || y.cooldown > 0) continue;
+
+        if (y.variant === 'yarn') {
+          y.vx += Math.sign(y.x - k.x || 1) * rand(2.5, 4.8);
+          y.vy += rand(-1.2, 1.2);
+          const swatSpeed = Math.hypot(y.vx, y.vy);
+          if (swatSpeed > 0.05) {
+            y.driftDirX = y.vx / swatSpeed;
+            y.driftDirY = y.vy / swatSpeed;
+          }
+          y.cruiseSpeed = Math.max(y.cruiseSpeed, Math.min(10.5, swatSpeed));
+          y.boostSpeed = Math.max(y.boostSpeed, Math.min(13.5, swatSpeed * 1.18));
+          if (k.behavior === 'walk') enterBehavior(k, Math.random() < 0.65 ? 'pounce' : 'playbow');
+          showPopup(k.el, '🐾');
+        } else {
+          y.vx += Math.sign(y.x - k.x || 1) * rand(1.4, 2.8);
+          y.vy -= rand(1.8, 3.8);
+          if (k.behavior === 'walk') enterBehavior(k, 'pounce');
+          showPopup(k.el, '🪶');
+        }
+        y.cooldown = 12;
+
+        if (Math.abs(y.x - k.x) > 8) {
+          k.el.dataset.facingRight = (y.x - k.x) > 0 ? '1' : '';
+        }
+        break;
+      }
+
+      for (const k of cats) {
+        if (k.tamagotchiId || !k.lureTarget) continue;
+        const dx = y.x - k.x;
+        const dy = y.y - k.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 24 || dist > 420) continue;
+        k.vx += (dx / dist) * 0.9;
+        k.vy += (dy / dist) * 0.9;
+        k.noBehaviors = true;
+        if (Math.abs(dx) > 5) k.el.dataset.facingRight = dx > 0 ? '1' : '';
+      }
+
       y.el.style.transform = `translate(${y.x}px, ${y.y}px)`;
-      if (y.x < -250 || y.x > window.innerWidth + 250) {
+      if (y.x < -250 || y.x > mainW() + 250 || y.y < -250 || y.y > mainH() + 250) {
         y.el.remove(); yarns.splice(i, 1);
       }
     }
+
+    // Keep kittens-stage covering full scroll height
+    stage.style.height = `${mainEl.scrollHeight}px`;
 
     requestAnimationFrame(tick);
   }
@@ -296,28 +857,41 @@
     personality?: Personality;
     noBehaviors?: boolean;
     force?: boolean;
+    furIndex?: number;
+    tamagotchi?: TamagotchiCat;
   } = {}): KState | null {
     const force = opts.force ?? false;
-    if (reducedMotion || (!force && activeKittens >= MAX_KITTENS)) return null;
+    const isTama = !!opts.tamagotchi;
+    if (reducedMotion || (!force && !isTama && activeKittens >= MAX_KITTENS)) return null;
+
+    // Don't spawn duplicate tamagotchi cats
+    if (isTama && onScreenTamagotchi.has(opts.tamagotchi!.id)) return null;
 
     const el = (kittenTpl.content.cloneNode(true) as DocumentFragment).querySelector('.kitten') as HTMLElement;
-    const pal = pick(FUR);
+
+    // Fur color: use specific index for tamagotchi/named cats, or random
+    const palIndex = opts.tamagotchi?.furIndex ?? opts.furIndex;
+    const pal = palIndex != null ? FUR[palIndex % FUR.length] : pick(FUR);
     el.style.setProperty('--kitten-fur', pal.fur);
     el.style.setProperty('--kitten-fur-dark', pal.dark);
     el.style.setProperty('--kitten-eye', pal.eye);
 
-    const [sMin, sMax] = opts.size ?? [50, 90];
+    // Size: based on stage for tamagotchi cats
+    const sizeRange = isTama ? (STAGE_SIZE[opts.tamagotchi!.stage] ?? [50, 90]) : (opts.size ?? [50, 90]);
+    const [sMin, sMax] = sizeRange;
     el.style.setProperty('--kitten-size', `${rand(sMin, sMax)}px`);
 
-    const personality = opts.personality ?? pick(PERSONALITIES);
+    const personality = opts.tamagotchi?.personality as Personality ?? opts.personality ?? pick(PERSONALITIES);
     const tailMood = TAIL_FOR_PERSONALITY[personality];
     el.dataset.tail = tailMood;
 
     const goRight = opts.goRight ?? Math.random() > 0.5;
-    const x = goRight ? -150 : window.innerWidth + 150;
-    const y = opts.yPos ?? window.scrollY + rand(window.innerHeight * 0.4, window.innerHeight * 0.85);
+    const x = goRight ? -150 : mainW() + 150;
+    const y = opts.yPos ?? mainScrollY() + rand(mainViewH() * 0.4, mainViewH() * 0.85);
 
-    const [spMin, spMax] = opts.speed ?? [1.5, 4.5];
+    // Speed: based on stage for tamagotchi cats
+    const speedRange = isTama ? (STAGE_SPEED[opts.tamagotchi!.stage] ?? [1.5, 4.5]) : (opts.speed ?? [1.5, 4.5]);
+    const [spMin, spMax] = speedRange;
     const speed = rand(spMin, spMax);
     const baseVx = goRight ? speed : -speed;
     const normalWalk = Math.max(0.15, 0.35 * (3 / speed));
@@ -326,47 +900,114 @@
     el.style.pointerEvents = 'auto';
     el.style.cursor = 'pointer';
 
+    // Name label for tamagotchi cats (and named ambient/sold cats)
+    const catName = opts.tamagotchi?.name;
+    if (catName) {
+      const nameEl = el.querySelector('.kitten-name') as HTMLElement;
+      if (nameEl) {
+        nameEl.textContent = catName;
+        nameEl.style.display = 'block';
+      }
+      if (isTama) {
+        el.classList.add('kitten--tamagotchi');
+        el.dataset.tamagotchiId = opts.tamagotchi!.id;
+      }
+    }
+
+    const initActivity = pickActivity(personality);
+    const [aLo, aHi] = ACTIVITY_DUR[initActivity];
+    const initBaseVy = isTama ? rand(-0.5, 0.5) : 0;
     const state: KState = {
       el, x, y, vx: 0, vy: 0,
-      baseVx, savedVx: baseVx, baseY: y,
+      baseVx, baseVy: initBaseVy, savedVx: baseVx, baseY: y,
       personality,
       behavior: 'walk', bTimer: 0,
       walkTimer: Math.floor(rand(200, 500)),
       normalWalk, origTail: tailMood,
       noBehaviors: opts.noBehaviors ?? false,
+      activity: initActivity,
+      activityTimer: Math.floor(rand(aLo, aHi)),
+      tamagotchiId: isTama ? opts.tamagotchi!.id : undefined,
+      tamagotchiName: catName,
+      askCooldown: Math.floor(rand(300, 720)),
     };
 
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      state.vx += Math.sign(state.x - e.pageX || 1) * 28;
-      state.vy -= 6;
-      if (state.behavior !== 'walk') exitBehavior(state);
-    });
+    if (isTama) {
+      // Tamagotchi cat: clicking = petting or shooing
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleTamagotchiClick(state, e);
+      });
+      onScreenTamagotchi.add(opts.tamagotchi!.id);
+    } else {
+      // Ambient cat: click to jump (original behavior)
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.vx += Math.sign(state.x - e.pageX || 1) * 28;
+        state.vy -= 6;
+        if (state.behavior !== 'walk') exitBehavior(state);
+      });
+    }
 
     activeKittens++;
     cats.push(state);
     stage.appendChild(el);
+    if (isTama) document.dispatchEvent(new CustomEvent('tama-cats-changed'));
     return state;
   }
 
-  function spawnKitten(force = false) {
+  function spawnAmbientKitten(force = false) {
     const r = Math.random();
     if (r < 0.05) spawnYarnChase();
     else if (r < 0.1) spawnMamaKittens();
-    else makeKitten({ force });
+    else {
+      // Sold kittens can appear as named ambient cats
+      const sold = tamagotchi.getAmbientCats();
+      if (sold.length > 0 && Math.random() < 0.3) {
+        const cat = pick(sold);
+        makeKitten({ force, furIndex: cat.furIndex, personality: cat.personality as Personality, tamagotchi: undefined });
+      } else {
+        makeKitten({ force });
+      }
+    }
+  }
+
+  function spawnTamagotchiOrAmbient(force = false) {
+    // Try to spawn a tamagotchi cat not already on screen
+    const available = tamagotchi.getTamagotchiCats().filter(c => !onScreenTamagotchi.has(c.id));
+    if (available.length > 0) {
+      const cat = pick(available);
+      makeKitten({ tamagotchi: cat, force: true });
+    } else {
+      // All tamagotchi cats on screen (or none loaded) — spawn ambient
+      spawnAmbientKitten(force);
+    }
   }
 
   function spawnYarnChase() {
     if (reducedMotion) return;
     const goRight = Math.random() > 0.5;
-    const yPos = window.scrollY + rand(window.innerHeight * 0.4, window.innerHeight * 0.75);
+    const yPos = mainScrollY() + rand(mainViewH() * 0.4, mainViewH() * 0.75);
     const speed = rand(3.5, 5);
     const vx = goRight ? speed : -speed;
+    const launchSpeed = Math.abs(vx) || 1;
 
     const yEl = (yarnTpl.content.cloneNode(true) as DocumentFragment).querySelector('.yarn') as HTMLElement;
     yEl.style.setProperty('--yarn-color', pick(YARN_COLORS));
     yEl.dataset.dir = goRight ? 'right' : 'left';
-    yarns.push({ el: yEl, x: goRight ? -50 : window.innerWidth + 50, y: yPos, vx });
+    yarns.push({
+      el: yEl,
+      x: goRight ? -50 : mainW() + 50,
+      y: yPos,
+      vx,
+      vy: 0,
+      cruiseSpeed: launchSpeed,
+      boostSpeed: launchSpeed,
+      driftDirX: vx / launchSpeed,
+      driftDirY: 0,
+      variant: 'yarn',
+      cooldown: 0,
+    });
     stage.appendChild(yEl);
 
     const count = Math.floor(rand(4, 6));
@@ -385,7 +1026,7 @@
   function spawnMamaKittens() {
     if (reducedMotion) return;
     const goRight = Math.random() > 0.5;
-    const yPos = window.scrollY + rand(window.innerHeight * 0.4, window.innerHeight * 0.75);
+    const yPos = mainScrollY() + rand(mainViewH() * 0.4, mainViewH() * 0.75);
     const speed = rand(1.5, 2.5);
 
     makeKitten({
@@ -408,31 +1049,1025 @@
     }
   }
 
-  /* ═══ Scheduling ═══════════════════════════════════════ */
+  /* ═══ Tamagotchi interactions ══════════════════════════ */
 
-  function scheduleKitten() {
-    setTimeout(() => { spawnKitten(); scheduleKitten(); }, rand(10000, 20000));
+  // Receptive states for petting
+  const RECEPTIVE: Behavior[] = ['walk', 'sit', 'groom'];
+  const SHOO_THRESHOLD = 4; // clicks needed to shoo a cat away
+
+  function showPopup(el: HTMLElement, icon: string) {
+    const popup = document.createElement('div');
+    popup.className = 'tama-care-popup';
+    popup.textContent = icon;
+    el.appendChild(popup);
+    popup.addEventListener('animationend', () => popup.remove());
   }
 
-  document.addEventListener('spawn-kitten', () => spawnKitten(true));
+  function emitTamaSound(kind: string, detail: Record<string, unknown> = {}) {
+    document.dispatchEvent(new CustomEvent('tama-sound', { detail: { kind, ...detail } }));
+  }
+
+  function findCatById(catId?: string): KState | null {
+    if (!catId) return null;
+    return cats.find((cat) => cat.tamagotchiId === catId) || null;
+  }
+
+  function getTamagotchiData(catId?: string): TamagotchiCat | undefined {
+    if (!catId) return undefined;
+    return tamagotchi.getState()?.cats.find((cat) => cat.id === catId);
+  }
+
+  function startScaredRun(k: KState, dir: number, frames = 150, speed = 4.2) {
+    const scaredDir = (dir >= 0 ? 1 : -1) as -1 | 1;
+    k.scaredFrames = Math.max(k.scaredFrames || 0, frames);
+    k.scaredDir = scaredDir;
+    if (k.behavior !== 'walk') exitBehavior(k);
+    k.baseVx = scaredDir * Math.max(speed, Math.abs(k.baseVx || k.savedVx || speed));
+    k.savedVx = k.baseVx;
+    k.vx = scaredDir * Math.max(Math.abs(k.vx), speed * 0.7);
+    k.vy *= 0.2;
+  }
+
+  function nudgeToward(k: KState, targetX: number, targetY: number, forceX: number, forceY: number, keepDistance = 0) {
+    const dx = targetX - k.x;
+    const dy = targetY - k.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) return dist;
+
+    if (keepDistance > 0 && dist < keepDistance) {
+      k.vx *= 0.82;
+      k.vy *= 0.82;
+      return dist;
+    } else {
+      k.vx += (dx / dist) * forceX;
+      k.vy += (dy / dist) * forceY;
+    }
+
+    if (Math.abs(dx) > 22) {
+      k.el.dataset.facingRight = dx > 0 ? '1' : '';
+    }
+    return dist;
+  }
+
+  let petCount = new Map<string, number>(); // track consecutive pets per cat
+  const PET_ANNOY_THRESHOLD = 5; // too many pets in a row
+
+  function handleTamagotchiClick(k: KState, e: MouseEvent) {
+    if (!k.tamagotchiId) return;
+
+    const rect = mainEl.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pushDir = Math.sign(k.x - clickX || 1);
+
+    // Check if cat is receptive to petting
+    const isReceptive = RECEPTIVE.includes(k.behavior);
+    const isSassy = k.personality === 'sassy';
+    const sassyRejects = isSassy && Math.random() < 0.4;
+    const petsReceived = petCount.get(k.tamagotchiId!) || 0;
+    const overPetted = petsReceived >= PET_ANNOY_THRESHOLD;
+    const escalatingShoo = (k.scaredFrames || 0) > 0 || (k.shooCount || 0) > 0;
+
+    if (k.behavior === 'nap') {
+      // Waking up a napping cat — annoyed!
+      exitBehavior(k);
+      startScaredRun(k, pushDir, 220, 5.5);
+      k.shooCount = (k.shooCount || 0) + 2;
+      bumpTrust(k.tamagotchiId!, -2);
+      petCount.set(k.tamagotchiId!, 0);
+      showPopup(k.el, '😾');
+    } else if (isReceptive && !sassyRejects && !overPetted && !escalatingShoo) {
+      // Successful pet — cat stays and enjoys it!
+      k.shooCount = Math.max(0, (k.shooCount || 0) - 1);
+      bumpTrust(k.tamagotchiId!, 1);
+      petCount.set(k.tamagotchiId!, petsReceived + 1);
+      if (k.behavior !== 'sit') {
+        if (k.behavior !== 'walk') exitBehavior(k);
+        enterBehavior(k, 'sit');
+      }
+      // Extend sit duration so cat stays content
+      k.bTimer = Math.max(k.bTimer, 300);
+      k.el.dataset.tail = 'content';
+      // Close eyes (squint) — override blink animation
+      k.el.classList.add('kitten--purring');
+      setTimeout(() => k.el.classList.remove('kitten--purring'), 2000);
+      showPopup(k.el, '💕');
+      emitTamaSound('pet', { catId: k.tamagotchiId });
+
+      const onScreen = cats.filter(c => c.tamagotchiId).map(c => c.tamagotchiId!);
+      tamagotchi.sendCare(k.tamagotchiId, 'pet', onScreen);
+    } else if (overPetted) {
+      // Over-petted — cat is done, walks away annoyed
+      petCount.set(k.tamagotchiId!, 0);
+      bumpTrust(k.tamagotchiId!, -1);
+      startScaredRun(k, pushDir, 200, 4.8);
+      k.shooCount = (k.shooCount || 0) + 1;
+      showPopup(k.el, '😾');
+    } else if (sassyRejects) {
+      // Sassy cat rejects petting — slight dodge
+      bumpTrust(k.tamagotchiId!, -1);
+      startScaredRun(k, pushDir, 140, 3.8);
+      k.shooCount = (k.shooCount || 0) + 1;
+      showPopup(k.el, '😤');
+    } else {
+      // Too busy (zoomies/stalk/pounce/playbow) — push them
+      bumpTrust(k.tamagotchiId!, -1);
+      startScaredRun(k, pushDir, 170, 4.6);
+      k.shooCount = (k.shooCount || 0) + 1;
+      showPopup(k.el, '💨');
+    }
+
+    // Shoo detection: enough consecutive pushes = cat gets shooed
+    if ((k.shooCount || 0) >= SHOO_THRESHOLD) {
+      k.shooed = true;
+      bumpTrust(k.tamagotchiId!, -3);
+      if (k.behavior !== 'walk') exitBehavior(k);
+      k.baseVx = pushDir * 6;
+      k.savedVx = k.baseVx;
+      k.vx = pushDir * 5;
+      showPopup(k.el, '👋');
+      petCount.delete(k.tamagotchiId!);
+      saveTamagotchiSession();
+    } else if ((k.shooCount || 0) >= SHOO_THRESHOLD - 1) {
+      showPopup(k.el, '😿');
+    }
+  }
+
+  // Care reaction: trigger behavior change on a tamagotchi cat (from remote care)
+  const CARE_BEHAVIORS: Record<string, Behavior> = {
+    feed: 'sit',       // happy sit after eating
+    pet: 'sit',        // content sit while being petted
+    play: 'zoomies',   // excited zoomies after play
+    groom: 'groom',    // grooming behavior
+  };
+
+  document.addEventListener('tamagotchi-care-react', ((e: CustomEvent) => {
+    const { catId, action, variant, sourceType } = e.detail;
+    const cat = cats.find(k => k.tamagotchiId === catId);
+    if (!cat) return;
+
+    if (sourceType === 'visitor') {
+      if (action === 'pet') bumpTrust(catId, 1);
+      else if (action === 'feed' || action === 'play' || action === 'groom') bumpTrust(catId, 2);
+    }
+
+    let behavior = CARE_BEHAVIORS[action];
+    if (action === 'play' && variant === 'feather') behavior = 'pounce';
+    if (action === 'feed' && variant === 'treat') behavior = 'playbow';
+    if (behavior) {
+      if (cat.behavior !== 'walk') exitBehavior(cat);
+      enterBehavior(cat, behavior);
+      cat.vy -= 4;
+    }
+  }) as EventListener);
+
+  /* ═══ Item drops (food, yarn, brush) ═════════════════ */
+
+  interface FoodItem {
+    el: HTMLElement;
+    x: number; y: number;
+    vx: number; vy: number;
+    variant: CareVariant;
+    targetCatId?: string;
+    bitesRemaining: number;
+    cooldown: number;
+    eaten: boolean;
+    gone: boolean; // removed from DOM
+  }
+  const foodItems: FoodItem[] = [];
+
+  document.addEventListener('tama-drop-item', ((e: CustomEvent) => {
+    const { item, variant, x: px, y: py, vx, vy, targetCatId } = e.detail as {
+      item: ItemKind;
+      variant?: CareVariant;
+      x: number;
+      y: number;
+      vx?: number;
+      vy?: number;
+      targetCatId?: string;
+    };
+    // Convert page coordinates to main-relative
+    const rect = mainEl.getBoundingClientRect();
+    const x = px - rect.left;
+    const y = py - rect.top + mainEl.scrollTop;
+    if (item === 'food') dropFood(x, y, vx || 0, vy || 0, variant || 'fish', targetCatId);
+    else if (item === 'yarn') dropYarn(x, y, vx || 0, vy || 0, variant || 'yarn', targetCatId);
+    else if (item === 'brush') dropBrush(x, y, targetCatId);
+  }) as EventListener);
+
+  function dropFood(x: number, y: number, dragVx: number, dragVy: number, variant: CareVariant = 'fish', targetCatId?: string) {
+    const el = document.createElement('div');
+    el.className = 'tama-food-item';
+    if (variant === 'pellets') {
+      el.classList.add('tama-food-item--pellets');
+      el.innerHTML = `
+        <span class="tama-pellet tama-pellet--a"></span>
+        <span class="tama-pellet tama-pellet--b"></span>
+        <span class="tama-pellet tama-pellet--c"></span>
+        <span class="tama-pellet tama-pellet--d"></span>
+      `;
+    } else {
+      el.textContent = variant === 'treat' ? '🍤' : '🐟';
+    }
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    stage.appendChild(el);
+
+    const throwFactor = variant === 'pellets' ? 0.92 : variant === 'treat' ? 0.82 : 0.72;
+    const maxThrowSpeed = variant === 'pellets' ? 19 : variant === 'treat' ? 16 : 14;
+    const fvx = Math.max(-maxThrowSpeed, Math.min(maxThrowSpeed, dragVx * throwFactor));
+    const fvy = Math.max(-maxThrowSpeed, Math.min(maxThrowSpeed, dragVy * throwFactor));
+    const bitesRemaining = variant === 'pellets' ? 4 : 1;
+    const food: FoodItem = { el, x, y, vx: fvx, vy: fvy, variant, targetCatId, bitesRemaining, cooldown: 0, eaten: false, gone: false };
+    foodItems.push(food);
+
+    // After 15 seconds, food disappears if uneaten
+    setTimeout(() => {
+      if (!food.eaten) {
+        food.gone = true;
+        food.el.remove();
+        const idx = foodItems.indexOf(food);
+        if (idx >= 0) foodItems.splice(idx, 1);
+      }
+    }, 15000);
+
+    // 40% chance to lure in an ambient cat to eat it
+    if (Math.random() < 0.4) {
+      setTimeout(() => {
+        if (food.eaten) return;
+        const goRight = x > mainW() / 2 ? false : true;
+        const lured = makeKitten({
+          goRight, yPos: food.y + rand(-20, 20),
+          speed: [1, 2], force: true,
+        });
+        if (lured) {
+          lured.noBehaviors = true;
+          lured.lureTarget = { x: () => food.x, y: () => food.y, alive: () => !food.gone };
+        }
+      }, rand(2000, 5000));
+    }
+  }
+
+  function dropYarn(x: number, y: number, dragVx: number, dragVy: number, variant: CareVariant = 'yarn', targetCatId?: string) {
+    // Direction and speed from drag gesture
+    const hasDrag = Math.abs(dragVx) > 0.5 || Math.abs(dragVy) > 0.5;
+    const fallbackRight = Math.random() > 0.5;
+    const vx = hasDrag ? Math.max(-10, Math.min(10, dragVx * 0.55)) : (fallbackRight ? rand(2, 4) : -rand(2, 4));
+    const vy = hasDrag ? Math.max(-8, Math.min(8, dragVy * 0.55)) : 0;
+    const launchVx = Math.abs(vx) < 0.2 && Math.abs(vy) > 0.6 ? 0 : vx;
+    const goRight = launchVx >= 0;
+    const yEl = (yarnTpl.content.cloneNode(true) as DocumentFragment).querySelector('.yarn') as HTMLElement;
+    yEl.dataset.variant = variant;
+    if (variant === 'feather') {
+      yEl.innerHTML = '<div class="tama-feather">🪶</div>';
+    }
+    yEl.style.setProperty('--yarn-color', pick(YARN_COLORS));
+    yEl.dataset.dir = goRight ? 'right' : 'left';
+    const launchSpeed = Math.hypot(launchVx, vy) || 1;
+    const driftDirX = launchVx / launchSpeed;
+    const driftDirY = vy / launchSpeed;
+    const cruiseSpeed = Math.max(1.4, launchSpeed);
+    yarns.push({
+      el: yEl,
+      x,
+      y,
+      vx: launchVx,
+      vy,
+      cruiseSpeed,
+      boostSpeed: cruiseSpeed,
+      driftDirX,
+      driftDirY,
+      variant,
+      targetCatId,
+      cooldown: 0,
+    });
+    stage.appendChild(yEl);
+
+    // Tamagotchi cats with enough energy chase the yarn
+    const targetCat = findCatById(targetCatId);
+    for (const k of cats) {
+      if (!k.tamagotchiId) continue;
+      if (targetCat && k !== targetCat) continue;
+      const state = tamagotchi.getState();
+      const catData = state?.cats.find(c => c.id === k.tamagotchiId);
+      if (!catData) continue;
+
+      // Personality determines yarn chase eagerness
+      const isAwake = k.behavior !== 'nap';
+      let willChase = false;
+      if (k.personality === 'playful') willChase = catData.energy > (variant === 'feather' ? 10 : 15);
+      else if (k.personality === 'curious') willChase = catData.energy > (variant === 'feather' ? 18 : 25);
+      else if (k.personality === 'sassy') willChase = catData.energy > 50 && Math.random() < (variant === 'feather' ? 0.45 : 0.3);
+      // lazy cats never chase yarn
+
+      if (willChase && isAwake) {
+        if (k.behavior !== 'walk') exitBehavior(k);
+        // Point toward the yarn at a gentle chase speed (don't stack with zoomies multiplier)
+        const chaseSpeed = Math.min(3, Math.abs(k.savedVx || k.baseVx) * 1.2);
+        k.baseVx = launchVx >= 0 ? chaseSpeed : -chaseSpeed;
+        k.savedVx = k.baseVx;
+        enterBehavior(k, variant === 'feather' ? 'pounce' : 'stalk');
+        showPopup(k.el, variant === 'feather' ? '🪶' : '❗');
+
+        // Send play action
+        const onScreen = cats.filter(c => c.tamagotchiId).map(c => c.tamagotchiId!);
+        tamagotchi.sendCare(k.tamagotchiId, 'play', onScreen, variant);
+      }
+    }
+
+    // 30% chance to lure in an ambient cat to chase the yarn
+    const yarnRef = yarns[yarns.length - 1]; // the yarn we just pushed
+    if (Math.random() < 0.3 && yarnRef) {
+      setTimeout(() => {
+        // Match the yarn's speed so the cat keeps pace
+        const yarnSpeed = Math.max(1.5, Math.abs(yarnRef.vx));
+        const lured = makeKitten({
+          goRight: yarnRef.vx >= 0, yPos: y + rand(-30, 30),
+          speed: [yarnSpeed * 0.9, yarnSpeed * 1.05],
+          personality: 'playful', force: true, noBehaviors: true,
+        });
+        if (lured) {
+          lured.lureTarget = { x: () => yarnRef.x, y: () => yarnRef.y, alive: () => yarns.includes(yarnRef) };
+        }
+      }, rand(500, 2000));
+    }
+  }
+
+  function dropBrush(x: number, y: number, targetCatId?: string) {
+    // Find closest tamagotchi cat within range (any cleanliness — some cats like being brushed)
+    let closest: KState | null = null;
+    let closestDist = 150;
+
+    for (const k of cats) {
+      if (!k.tamagotchiId) continue;
+      if (targetCatId && k.tamagotchiId !== targetCatId) continue;
+      const dist = Math.hypot(k.x - x, k.y - y);
+      if (dist < closestDist) {
+        closest = k;
+        closestDist = dist;
+      }
+    }
+
+    if (!closest || !closest.tamagotchiId) {
+      // No cat nearby
+      const poof = document.createElement('div');
+      poof.className = 'tama-care-popup';
+      poof.textContent = '🪮';
+      poof.style.position = 'absolute';
+      poof.style.left = `${x}px`;
+      poof.style.top = `${y}px`;
+      stage.appendChild(poof);
+      poof.addEventListener('animationend', () => poof.remove());
+      return;
+    }
+
+    const p = closest.personality;
+    const catData = tamagotchi.getState()?.cats.find(c => c.id === closest!.tamagotchiId);
+    const onScreen = cats.filter(c => c.tamagotchiId).map(c => c.tamagotchiId!);
+
+    // Sleeping cats ignore
+    if (closest.behavior === 'nap') {
+      showPopup(closest.el, '💤');
+      return;
+    }
+
+    // Sassy cats: 50% chance to reject
+    if (p === 'sassy' && Math.random() < 0.5) {
+      closest.vx += Math.sign(closest.x - x || 1) * 15;
+      closest.vy -= 3;
+      if (closest.behavior !== 'walk') exitBehavior(closest);
+      showPopup(closest.el, '😤');
+      return;
+    }
+
+    // Playful cats: 30% chance to attack the brush (still counts as groom)
+    if (p === 'playful' && Math.random() < 0.3) {
+      if (closest.behavior !== 'walk') exitBehavior(closest);
+      enterBehavior(closest, 'pounce');
+      closest.vx += Math.sign(x - closest.x) * 10;
+      showPopup(closest.el, '🐾');
+      tamagotchi.sendCare(closest.tamagotchiId, 'groom', onScreen, 'brush');
+      return;
+    }
+
+    // Lazy and curious cats LOVE being brushed — it's like petting for them
+    const lovesBrush = p === 'lazy' || p === 'curious';
+
+    if (p === 'curious') {
+      // Inspect first, then enjoy
+      if (closest.behavior !== 'walk') exitBehavior(closest);
+      enterBehavior(closest, 'stalk');
+      showPopup(closest.el, '👀');
+      const cat = closest; // capture for timeout
+      setTimeout(() => {
+        if (cat.tamagotchiId) {
+          if (cat.behavior !== 'walk') exitBehavior(cat);
+          enterBehavior(cat, 'groom');
+          cat.bTimer = Math.max(cat.bTimer, 400);
+          showPopup(cat.el, lovesBrush ? '💕' : '✨');
+          cat.el.classList.add('kitten--purring');
+          setTimeout(() => cat.el.classList.remove('kitten--purring'), 2000);
+        }
+      }, 800);
+    } else {
+      // Lazy cats settle right in, others just groom
+      if (closest.behavior !== 'walk') exitBehavior(closest);
+      enterBehavior(closest, 'groom');
+      closest.bTimer = Math.max(closest.bTimer, 400);
+      if (lovesBrush) {
+        showPopup(closest.el, '💕');
+        closest.el.classList.add('kitten--purring');
+        setTimeout(() => closest!.el.classList.remove('kitten--purring'), 2000);
+      } else {
+        showPopup(closest.el, '✨');
+      }
+    }
+
+    // Send groom action — and also pet if the cat loves it
+    tamagotchi.sendCare(closest.tamagotchiId, 'groom', onScreen, 'brush');
+    if (lovesBrush) {
+      tamagotchi.sendCare(closest.tamagotchiId, 'pet', onScreen);
+    }
+  }
+
+  /* ═══ Food attraction (in tick loop) ═════════════════ */
+
+  function tickFoodAttraction() {
+    for (const food of foodItems) {
+      if (food.eaten) continue;
+      if (food.cooldown > 0) food.cooldown--;
+
+      // Food inertia — slides and decelerates
+      if (Math.abs(food.vx) > 0.05 || Math.abs(food.vy) > 0.05) {
+        food.x += food.vx;
+        food.y += food.vy;
+        const drag = food.variant === 'pellets' ? 0.72 : food.variant === 'treat' ? 0.84 : 0.95;
+        food.vx *= drag;
+        food.vy *= drag;
+        food.el.style.left = `${food.x}px`;
+        food.el.style.top = `${food.y}px`;
+      }
+
+      // Find hungriest nearby tamagotchi cat
+      let hungriest: KState | null = null;
+      let lowestHunger = 70;
+
+      for (const k of cats) {
+        if (!k.tamagotchiId || k.behavior === 'nap') continue;
+        if (food.targetCatId && k.tamagotchiId !== food.targetCatId) continue;
+        const catData = tamagotchi.getState()?.cats.find(c => c.id === k.tamagotchiId);
+        if (!catData) continue;
+
+        // Personality affects food motivation
+        let hungerThreshold = 70;
+        if (k.personality === 'lazy') hungerThreshold = 40; // lazy cats only eat when really hungry
+        if (k.personality === 'curious') hungerThreshold = 85; // curious cats investigate food even when not hungry
+        if (food.variant === 'treat') hungerThreshold += 12;
+        if (food.variant === 'pellets' && k.personality === 'sassy') hungerThreshold -= 10;
+        if (catData.hunger >= hungerThreshold) continue;
+
+        const dist = Math.hypot(k.x - food.x, k.y - food.y);
+        if (dist < 400) {
+          hungriest = k;
+          lowestHunger = catData.hunger;
+        }
+      }
+
+      // Non-hungry cats react to nearby food (swat or stare)
+      if (!hungriest) {
+        for (const k of cats) {
+          if (!k.tamagotchiId || k.behavior === 'nap') continue;
+          const dist = Math.hypot(k.x - food.x, k.y - food.y);
+          if (dist < 80 && dist > 20 && Math.random() < 0.003) {
+            if (k.personality === 'playful') {
+              // Swat the food
+              food.vx += (Math.random() > 0.5 ? 3 : -3);
+              food.vy += rand(-2, 2);
+              showPopup(k.el, '🐾');
+              enterBehavior(k, 'pounce');
+              k.bTimer = 60;
+            } else {
+              // Sit and stare at it judgmentally
+              if (k.behavior === 'walk') {
+                enterBehavior(k, 'sit');
+                k.bTimer = Math.floor(rand(120, 300));
+                k.el.dataset.facingRight = (food.x - k.x) > 0 ? '1' : '';
+                showPopup(k.el, '😒');
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      // Also check lured ambient cats reaching the food
+      if (!hungriest) {
+        for (const k of cats) {
+          if (!k.lureTarget || k.tamagotchiId) continue;
+          const dist = Math.hypot(k.x - food.x, k.y - food.y);
+          if (dist < 400) { hungriest = k; break; }
+        }
+      }
+
+      if (hungriest) {
+        const dx = food.x - hungriest.x;
+        const dy = food.y - hungriest.y;
+        const dist = Math.hypot(dx, dy);
+
+        const eatRadius = food.variant === 'pellets' ? 42 : 30;
+        if (dist < eatRadius && food.cooldown <= 0) {
+          if (hungriest.behavior !== 'walk') exitBehavior(hungriest);
+          enterBehavior(hungriest, 'sit');
+          showPopup(hungriest.el, food.variant === 'pellets' ? '•' : '😋');
+          hungriest.lureTarget = undefined;
+          hungriest.noBehaviors = false;
+
+          // Send feed action (tamagotchi cats only)
+          if (hungriest.tamagotchiId) {
+            const onScreen = cats.filter(c => c.tamagotchiId).map(c => c.tamagotchiId!);
+            tamagotchi.sendCare(hungriest.tamagotchiId, 'feed', onScreen, food.variant);
+          }
+
+          food.bitesRemaining -= 1;
+          if (food.variant === 'pellets') {
+            const pellets = Array.from(food.el.querySelectorAll('.tama-pellet'));
+            const pellet = pellets[food.bitesRemaining];
+            pellet?.remove();
+            food.vx += rand(-0.6, 0.6);
+            food.vy += rand(-0.3, 0.3);
+          }
+          food.cooldown = food.variant === 'pellets' ? 20 : 10;
+
+          if (food.bitesRemaining <= 0) {
+            food.eaten = true;
+            food.gone = true;
+            food.el.classList.add('eaten');
+            setTimeout(() => {
+              food.el.remove();
+              const idx = foodItems.indexOf(food);
+              if (idx >= 0) foodItems.splice(idx, 1);
+            }, 300);
+          }
+        } else if (hungriest.tamagotchiId) {
+          // Tamagotchi cats: attract toward food
+          const foodPull = food.variant === 'pellets' ? 1.05 : 0.8;
+          hungriest.vx += (dx / dist) * foodPull;
+          hungriest.vy += (dy / dist) * 0.3;
+        } else {
+          // Ambient thieves also need direct pursuit, not just their old wander vector.
+          hungriest.vx += (dx / dist) * 0.95;
+          hungriest.vy += (dy / dist) * 0.95;
+          hungriest.noBehaviors = true;
+        }
+      }
+    }
+  }
+
+  /* ═══ Stats → behavior weights ═══════════════════════ */
+
+  function pickActivityBehavior(k: KState): Behavior {
+    // Ambient cats: just use personality
+    if (!k.tamagotchiId) return pickBehavior(k.personality);
+
+    // Start with activity weights as the base
+    const actW = ACTIVITY_WEIGHTS[k.activity] || {};
+    const persW = BWEIGHTS[k.personality];
+    const w: Partial<Record<Behavior, number>> = {};
+
+    // Merge: activity weights dominate, personality adds flavor
+    for (const b of ['walk', 'sit', 'playbow', 'pounce', 'groom', 'nap', 'zoomies', 'stalk'] as Behavior[]) {
+      w[b] = ((actW[b] || 0) * 2) + (persW[b] || 0);
+    }
+
+    // Stats modifiers (tamagotchi only)
+    const catData = tamagotchi.getState()?.cats.find(c => c.id === k.tamagotchiId);
+    if (catData) {
+      if (catData.energy < 30) {
+        w.nap = (w.nap || 0) + 5; w.sit = (w.sit || 0) + 3;
+        w.zoomies = 0; w.playbow = 0; w.pounce = 0;
+      } else if (catData.energy < 60) {
+        w.nap = (w.nap || 0) + 2; w.zoomies = (w.zoomies || 0) * 0.3;
+      }
+      if (catData.happiness < 30) {
+        w.sit = (w.sit || 0) + 4; w.playbow = 0; w.pounce = 0; w.zoomies = 0;
+      }
+      if (catData.cleanliness < 30) { w.groom = (w.groom || 0) + 5; }
+      else if (catData.cleanliness < 60) { w.groom = (w.groom || 0) + 2; }
+    }
+
+    // Pick from combined weights
+    const entries = Object.entries(w).filter(([, v]) => v && v > 0) as [Behavior, number][];
+    if (entries.length === 0) return 'sit';
+    const total = entries.reduce((s, [, v]) => s + v, 0);
+    let r = Math.random() * total;
+    for (const [b, v] of entries) { r -= v; if (r <= 0) return b; }
+    return 'sit';
+  }
+
+  /* ═══ Stats → visual appearance ══════════════════════ */
+
+  function updateTamagotchiVisuals() {
+    const state = tamagotchi.getState();
+    if (!state) return;
+
+    for (const k of cats) {
+      if (!k.tamagotchiId) continue;
+      const catData = state.cats.find(c => c.id === k.tamagotchiId);
+      if (!catData) continue;
+
+      // Low hunger: slow movement
+      if (catData.hunger < 30) {
+        k.el.style.setProperty('--kitten-walk-speed', `${k.normalWalk * 1.8}s`);
+      }
+
+      // Low cleanliness: desaturated fur
+      if (catData.cleanliness < 30) {
+        k.el.style.filter = 'saturate(0.5) drop-shadow(0 0 4px rgba(255, 200, 100, 0.3))';
+      } else if (catData.cleanliness < 60) {
+        k.el.style.filter = 'saturate(0.75) drop-shadow(0 0 4px rgba(255, 200, 100, 0.3))';
+      } else {
+        k.el.style.filter = 'drop-shadow(0 0 4px rgba(255, 200, 100, 0.3))';
+      }
+
+      // Low happiness: droopy ears
+      const ears = k.el.querySelectorAll('.kitten-ear');
+      if (catData.happiness < 30) {
+        ears.forEach(ear => (ear as HTMLElement).style.transform += ' rotate(15deg)');
+      }
+    }
+  }
+
+  /* ═══ Social bonds + family behavior ══════════════════ */
+
+  const SOCIAL_GROOM_INTERVAL = 600; // frames (~10s at 60fps)
+  let socialTimer = 0;
+
+  function getRelation(catA: string, catB: string): string | null {
+    const state = tamagotchi.getState();
+    if (!state) return null;
+    const rel = state.family.find(
+      f => (f.catId === catA && f.relatedCatId === catB) ||
+           (f.catId === catB && f.relatedCatId === catA)
+    );
+    return rel?.relation || null;
+  }
+
+  function getBondAffinity(catA: string, catB: string): number {
+    const state = tamagotchi.getState();
+    if (!state) return 0;
+    const [a, b] = catA < catB ? [catA, catB] : [catB, catA];
+    const bond = state.bonds.find(bo => bo.catAId === a && bo.catBId === b);
+    // Family relations count as high affinity
+    const familyBonus = getRelation(catA, catB) ? 80 : 0;
+    return Math.min(100, (bond?.affinity || 0) + familyBonus);
+  }
+
+  function tickSocialBehavior() {
+    socialTimer++;
+
+    const tamaCats = cats.filter(k => k.tamagotchiId);
+    if (tamaCats.length < 2) return;
+
+    for (let i = 0; i < tamaCats.length; i++) {
+      const a = tamaCats[i];
+      if (!a.tamagotchiId) continue;
+
+      for (let j = i + 1; j < tamaCats.length; j++) {
+        const b = tamaCats[j];
+        if (!b.tamagotchiId) continue;
+
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        const affinity = getBondAffinity(a.tamagotchiId, b.tamagotchiId);
+        const relation = getRelation(a.tamagotchiId, b.tamagotchiId);
+
+        if (affinity < 10) continue; // no meaningful bond
+
+        // ── Attraction: bonded cats drift toward each other ──
+        if (dist > 150 && dist < 500 && affinity > 30) {
+          // Only attract when far apart — gentle drift, not a tug
+          const strength = 0.08 * (affinity / 100);
+          if (a.behavior === 'walk') {
+            a.vx += (dx / dist) * strength;
+          }
+          if (b.behavior === 'walk') {
+            b.vx -= (dx / dist) * strength;
+          }
+        }
+        // When close enough, settle down together instead of walking in place
+        if (dist < 120 && dist > 20 && affinity > 30) {
+          if (a.behavior === 'walk' && Math.random() < 0.008) {
+            enterBehavior(a, 'sit');
+          }
+          if (b.behavior === 'walk' && Math.random() < 0.008) {
+            enterBehavior(b, 'sit');
+          }
+        }
+
+        // ── Parent-child: kittens follow moeder more strongly ──
+        if (relation === 'mother') {
+          // Figure out who is the kitten and who is the mother
+          const state = tamagotchi.getState();
+          const aData = state?.cats.find(c => c.id === a.tamagotchiId);
+          const bData = state?.cats.find(c => c.id === b.tamagotchiId);
+
+          let kitten: KState | null = null;
+          let mother: KState | null = null;
+          if (aData?.stage === 'kitten' && bData?.stage === 'adult') { kitten = a; mother = b; }
+          else if (bData?.stage === 'kitten' && aData?.stage === 'adult') { kitten = b; mother = a; }
+
+          if (kitten && mother && dist > 80 && dist < 600) {
+            const kdx = mother.x - kitten.x;
+            const kdy = mother.y - kitten.y;
+            const kdist = Math.hypot(kdx, kdy);
+            // Kittens follow mom with a stronger force
+            if (kitten.behavior === 'walk' || kitten.behavior === 'stalk') {
+              kitten.vx += (kdx / kdist) * 0.4;
+              kitten.vy += (kdy / kdist) * 0.15;
+            }
+          }
+        }
+
+        // ── Sibling play: nearby siblings trigger playbow/pounce ──
+        if (relation === 'sibling' && dist < 120 && dist > 30) {
+          // Small chance per frame to trigger play
+          if (Math.random() < 0.003 && affinity > 40) {
+            // Pick one sibling to playbow at the other
+            const player = Math.random() > 0.5 ? a : b;
+            if (player.behavior === 'walk') {
+              enterBehavior(player, Math.random() > 0.5 ? 'playbow' : 'pounce');
+              showPopup(player.el, '🐾');
+            }
+          }
+        }
+
+        // ── Social grooming: bonded cats groom each other ──
+        if (dist < 80 && affinity > 50 && socialTimer % SOCIAL_GROOM_INTERVAL === 0) {
+          const state = tamagotchi.getState();
+          const aData = state?.cats.find(c => c.id === a.tamagotchiId);
+          const bData = state?.cats.find(c => c.id === b.tamagotchiId);
+
+          // Find the dirtier cat
+          let groomer: KState | null = null;
+          let groomee: KState | null = null;
+          let groomeeId: string | null = null;
+
+          if (aData && bData) {
+            if (bData.cleanliness < 60 && a.behavior === 'walk') {
+              groomer = a; groomee = b; groomeeId = b.tamagotchiId!;
+            } else if (aData.cleanliness < 60 && b.behavior === 'walk') {
+              groomer = b; groomee = a; groomeeId = a.tamagotchiId!;
+            }
+          }
+
+          if (groomer && groomee && groomeeId) {
+            enterBehavior(groomer, 'groom');
+            showPopup(groomer.el, '✨');
+            showPopup(groomee.el, '💕');
+
+            // Send groom action for the dirty cat
+            const onScreen = tamaCats.map(c => c.tamagotchiId!);
+            tamagotchi.sendCare(groomeeId, 'groom', onScreen, undefined, {
+              sourceType: 'cat',
+              sourceCatId: groomer.tamagotchiId,
+              sourceCatName: groomer.tamagotchiName,
+            });
+          }
+        }
+
+        // ── Nap pile: bonded cats nap near each other ──
+        if (dist < 150 && affinity > 40) {
+          // If one is napping, the other gravitates toward them for a nap too
+          if (a.behavior === 'nap' && b.behavior === 'walk' && Math.random() < 0.002) {
+            b.baseY = a.y;
+            enterBehavior(b, 'nap');
+            showPopup(b.el, '💤');
+          } else if (b.behavior === 'nap' && a.behavior === 'walk' && Math.random() < 0.002) {
+            a.baseY = b.y;
+            enterBehavior(a, 'nap');
+            showPopup(a.el, '💤');
+          }
+        }
+      }
+    }
+  }
+
+  /* ═══ SessionStorage persistence ═════════════════════ */
+
+  const SESSION_KEY = 'tamagotchi_onscreen';
+  const TRUST_KEY = 'tamagotchi_trust';
+  const TRUST_RESTORE_THRESHOLD = 2;
+
+  function getTrustMap(): Record<string, number> {
+    try {
+      return JSON.parse(sessionStorage.getItem(TRUST_KEY) || '{}') as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }
+
+  function getTrust(catId: string): number {
+    return getTrustMap()[catId] || 0;
+  }
+
+  function setTrust(catId: string, value: number): void {
+    const trust = getTrustMap();
+    trust[catId] = Math.max(-3, Math.min(12, value));
+    sessionStorage.setItem(TRUST_KEY, JSON.stringify(trust));
+  }
+
+  function bumpTrust(catId: string, delta: number): void {
+    setTrust(catId, getTrust(catId) + delta);
+  }
+
+  function saveTamagotchiSession() {
+    const ids = cats
+      .filter((k) => k.tamagotchiId && !k.shooed && getTrust(k.tamagotchiId!) >= TRUST_RESTORE_THRESHOLD)
+      .map((k) => k.tamagotchiId!);
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(ids));
+  }
+
+  function restoreTamagotchiSession() {
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    if (!stored) return;
+
+    try {
+      const ids = JSON.parse(stored) as string[];
+
+      // Wait for state to be available, then spawn
+      function tryRestore() {
+        const tamaCats = tamagotchi.getTamagotchiCats();
+        if (tamaCats.length === 0) {
+          // State not loaded yet, retry shortly
+          setTimeout(tryRestore, 500);
+          return;
+        }
+        ids.forEach((id, i) => {
+          const cat = tamaCats.find(c => c.id === id);
+          if (cat && !onScreenTamagotchi.has(id) && getTrust(id) >= TRUST_RESTORE_THRESHOLD) {
+            setTimeout(() => {
+              makeKitten({ tamagotchi: cat, force: true });
+              saveTamagotchiSession();
+            }, i * rand(800, 1500));
+          }
+        });
+      }
+      tryRestore();
+    } catch { /* ignore bad data */ }
+  }
+
+  // Save session when tamagotchi cats change
+  function onTamagotchiChange() {
+    saveTamagotchiSession();
+  }
+
+  // Save before navigating away
+  window.addEventListener('beforeunload', saveTamagotchiSession);
+
+  /* ═══ Scheduling ═══════════════════════════════════════ */
+
+  let spawnPaused = false;
+  function scheduleKitten() {
+    setTimeout(() => {
+      if (!spawnPaused) spawnAmbientKitten();
+      scheduleKitten();
+    }, rand(10000, 20000));
+  }
+
+  // Tab visibility — pause spawning when hidden, scatter cats on return
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      spawnPaused = true;
+      hiddenAt = Date.now();
+    } else {
+      spawnPaused = false;
+      const idleMs = Date.now() - hiddenAt;
+      if (idleMs > 30000) {
+        // 15 min ≈ 5 cats, 2 hours ≈ 20 cats
+        const idleMin = idleMs / 60000;
+        const count = Math.min(20, Math.round(idleMin / 3));
+        for (let i = 0; i < count; i++) {
+          const cat = makeKitten({ force: true });
+          if (cat) {
+            // Place at random position on the visible page
+            cat.x = rand(50, mainW() - 50);
+            cat.y = mainScrollY() + rand(50, mainViewH() - 50);
+            cat.baseVx = 0;
+            cat.savedVx = 0;
+            // Start in a settled pose — they were chilling
+            const settled = pick(['sit', 'nap', 'groom'] as const);
+            enterBehavior(cat, settled);
+            cat.el.style.transform = `translate(${cat.x}px, ${cat.y}px)`;
+
+            // After a staggered delay — they notice you're back and scatter
+            setTimeout(() => {
+              if (!cat.el.parentNode) return;
+              exitBehavior(cat);
+              showPopup(cat.el, '❗');
+              cat.baseY = cat.y; // reset spring anchor so they don't bounce back
+              const goLeft = cat.x < mainW() / 2;
+              cat.baseVx = goLeft ? rand(-4, -6) : rand(4, 6);
+              cat.savedVx = cat.baseVx;
+              cat.vy -= rand(1, 3);
+            }, rand(300, 1500 + i * 400));
+          }
+        }
+      }
+    }
+  });
+
+  // Dismiss all tamagotchi cats (from sidebar close)
+  document.addEventListener('tama-dismiss-all', () => {
+    for (const k of cats) {
+      if (k.tamagotchiId) {
+        k.shooed = true;
+        k.baseVx = (Math.random() > 0.5 ? 1 : -1) * 6;
+        k.savedVx = k.baseVx;
+        if (k.behavior !== 'walk') exitBehavior(k);
+      }
+    }
+    saveTamagotchiSession();
+  });
+
+  // Button click: tamagotchi first, then ambient
+  document.addEventListener('spawn-kitten', () => {
+    spawnTamagotchiOrAmbient(true);
+    saveTamagotchiSession();
+  });
+
+  // Override behavior picking for tamagotchi cats
+  const origPickBehavior = pickBehavior;
+  // Patch the behavior timer in tick to use stats-aware picking
+  // (We hook into enterBehavior via the walk timer check)
 
   if (!reducedMotion) {
+    let restTimer = 0;
+    requestAnimationFrame(function gameTick() {
+      tickFoodAttraction();
+      tickSocialBehavior();
+      if (Math.random() < 0.016) updateTamagotchiVisuals();
+
+      // Send "rest" for napping tamagotchi cats every ~10 seconds
+      restTimer++;
+      if (restTimer >= 600) {
+        restTimer = 0;
+        for (const k of cats) {
+          if (k.tamagotchiId && k.behavior === 'nap') {
+            const onScreen = cats.filter(c => c.tamagotchiId).map(c => c.tamagotchiId!);
+            tamagotchi.sendCare(k.tamagotchiId, 'rest' as any, onScreen);
+          }
+        }
+      }
+
+      // Exploring cats: follow the user's viewport / cursor area
+      for (const k of cats) {
+        if (!k.tamagotchiId || k.activity !== 'explore') continue;
+        if (k.behavior !== 'walk' && k.behavior !== 'stalk') continue;
+
+        // Drift toward the visible area (where the user is scrolled to)
+        const viewCenter = mainScrollY() + mainViewH() * 0.5;
+        const distToView = viewCenter - k.y;
+        if (Math.abs(distToView) > mainViewH() * 0.6) {
+          // Cat is off-screen — pull toward viewport
+          k.baseVy += Math.sign(distToView) * 0.02;
+          k.baseVy = Math.max(-1.5, Math.min(1.5, k.baseVy));
+        }
+
+        // Occasionally drift toward cursor
+        if (Math.random() < 0.002 && Math.abs(my - k.y) > 100) {
+          k.baseVy += Math.sign(my - k.y) * 0.3;
+          k.baseVy = Math.max(-1.5, Math.min(1.5, k.baseVy));
+        }
+      }
+
+      requestAnimationFrame(gameTick);
+    });
+
     requestAnimationFrame(tick);
-    setTimeout(spawnKitten, 3000);
-    scheduleKitten();
+
+    // Init tamagotchi client, then start spawning
+    tamagotchi.init().then(() => {
+      // Restore previously on-screen cats
+      restoreTamagotchiSession();
+      setTimeout(spawnAmbientKitten, 3000);
+      scheduleKitten();
+    }).catch(() => {
+      // Game server unavailable — fall back to pure ambient
+      setTimeout(spawnAmbientKitten, 3000);
+      scheduleKitten();
+    });
   }
 </script>
 
 <style is:global>
-  body { position: relative; }
-
   .kittens-stage {
     position: absolute;
     top: 0; left: 0;
-    width: 100%; height: 100%;
+    width: 100%;
+    min-height: 100%;
     pointer-events: none;
-    z-index: 10;
-    overflow: hidden;
+    z-index: 50;
   }
 
   /* ══ Kitten root ═══════════════════════════════════════ */
@@ -442,6 +2077,54 @@
     top: 0; left: 0;
     width: var(--kitten-size, 70px);
     height: var(--kitten-size, 70px);
+  }
+
+  /* ══ Name label ════════════════════════════════════════ */
+
+  .kitten-name {
+    display: none;
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-body, 'Inter', sans-serif);
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--color-text, #3d3225);
+    white-space: nowrap;
+    pointer-events: none;
+    background: rgba(255, 252, 247, 0.85);
+    padding: 1px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  /* Counter-flip the name when the cat faces left */
+  .kitten:not([data-facing-right="1"]) .kitten-name {
+    transform: translateX(-50%) scaleX(-1);
+  }
+
+  .kitten--tamagotchi {
+    cursor: pointer !important;
+    filter: drop-shadow(0 0 4px rgba(255, 200, 100, 0.3));
+    transition: filter 0.2s ease;
+  }
+
+  .kitten--highlighted {
+    filter: drop-shadow(0 0 8px rgba(255, 180, 50, 0.7)) drop-shadow(0 0 16px rgba(255, 180, 50, 0.4)) !important;
+  }
+
+  .kitten--purring .kitten-eye {
+    animation: none !important;
+    transform: scaleY(0.2);
+  }
+  .kitten--purring .kitten-body {
+    animation: kitten-purr-bob 0.4s ease-in-out infinite alternate !important;
+  }
+  @keyframes kitten-purr-bob {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(-1px) rotate(1deg); }
   }
 
   /* ══ Body ══════════════════════════════════════════════ */
@@ -787,6 +2470,9 @@
     top: 0; left: 0;
     pointer-events: none;
   }
+  .yarn[data-variant="feather"]::after {
+    content: none;
+  }
   /* Trailing yarn strand — comes from bottom of ball, trails behind */
   .yarn::after {
     content: '';
@@ -829,6 +2515,13 @@
   }
   .yarn-ball::before { transform: rotate(35deg); }
   .yarn-ball::after  { transform: rotate(-25deg) scale(0.8); }
+  .tama-feather {
+    font-size: 24px;
+    filter: drop-shadow(0 4px 8px rgba(75, 55, 37, 0.25));
+    transform: rotate(16deg);
+    animation: feather-float 0.45s ease-in-out infinite alternate;
+    line-height: 1;
+  }
 
   /* ══ Keyframes ═════════════════════════════════════════ */
 
@@ -874,6 +2567,10 @@
     0%   { transform: rotate(-2deg) scaleX(0.6) translateY(0px); }
     70%  { transform: rotate(2deg) scaleX(0.4) translateY(-6px); }
     100% { transform: rotate(-1deg) scaleX(1) translateY(2px); }
+  }
+  @keyframes feather-float {
+    0%   { transform: rotate(10deg) translateY(-1px); }
+    100% { transform: rotate(22deg) translateY(2px); }
   }
 
   /* Tail keyframes */

@@ -71,9 +71,28 @@ html {
 }
 
 body {
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.page-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.page-body > main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  position: relative;
+}
+
+.page-content {
+  position: relative;
+  z-index: 0;
 }
 
 img {

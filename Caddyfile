@@ -10,6 +10,16 @@
 		reverse_proxy steward:18032
 	}
 
+	# Tamagotchi game WebSocket
+	handle /ws {
+		reverse_proxy game:18033
+	}
+
+	# Tamagotchi game API
+	handle /game/* {
+		reverse_proxy game:18033
+	}
+
 	# Directus assets + admin
 	handle /assets/* {
 		reverse_proxy directus:8055

@@ -3,6 +3,7 @@ import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import Seo from '../components/Seo.astro';
 import WalkingKittens from '../components/WalkingKittens.astro';
+import TamagotchiUI from '../components/TamagotchiUI.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -78,17 +79,22 @@ if (sameAs.length) localBusiness.sameAs = sameAs;
   <body>
     <a href="#main" class="visually-hidden">Naar hoofdinhoud</a>
     <Nav catteryNaam={naam} logoId={siteInstellingen?.logo?.id} />
-    <main id="main">
-      <slot />
-    </main>
-    <Footer
-      catteryNaam={naam}
-      email={siteInstellingen?.contact_email}
-      telefoon={siteInstellingen?.telefoon}
-      adres={siteInstellingen?.adres}
-      facebookUrl={siteInstellingen?.facebook_url}
-      instagramUrl={siteInstellingen?.instagram_url}
-    />
-    <WalkingKittens />
+    <div class="page-body">
+      <main id="main">
+        <div class="page-content">
+          <slot />
+          <Footer
+            catteryNaam={naam}
+            email={siteInstellingen?.contact_email}
+            telefoon={siteInstellingen?.telefoon}
+            adres={siteInstellingen?.adres}
+            facebookUrl={siteInstellingen?.facebook_url}
+            instagramUrl={siteInstellingen?.instagram_url}
+          />
+        </div>
+        <WalkingKittens />
+      </main>
+      <TamagotchiUI />
+    </div>
   </body>
 </html>
