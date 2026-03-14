@@ -7,6 +7,9 @@ directus/database/*.db
 directus/uploads/*
 !directus/uploads/.gitkeep
 
+# game server data
+game-server/data/*.db*
+
 # env
 .env
 
