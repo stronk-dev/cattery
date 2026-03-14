@@ -330,25 +330,45 @@
     return 'sit';
   }
 
-  // Overwhelm detection: too many behavior changes = cat panics and runs
-  let behaviorEntryLog: number[] = [];
+  // Overwhelm detection: too many behavior changes per cat = cat panics and runs
+  const behaviorEntryLogs = new WeakMap<KState, number[]>();
 
   function enterBehavior(k: KState, b: Behavior) {
-    // Track rapid entries
+    // Hard override: scared cats are untouchable — nothing can change their behavior.
+    // This prevents the overwhelm→nap→overwhelm cycle and any other re-entry loops.
+    if (k.scaredFrames && k.scaredFrames > 0) return;
+
+    // Track rapid entries per cat
     const now = performance.now();
-    behaviorEntryLog.push(now);
-    behaviorEntryLog = behaviorEntryLog.filter(t => now - t < 1000);
-    if (behaviorEntryLog.length > 10 || (k.behaviorQueue && k.behaviorQueue.length > 10)) {
-      // Overwhelmed! Flush everything and run
-      behaviorEntryLog = [];
+    let log = behaviorEntryLogs.get(k);
+    if (!log) { log = []; behaviorEntryLogs.set(k, log); }
+    log.push(now);
+    // Filter old entries inline
+    let writeIdx = 0;
+    for (let i = 0; i < log.length; i++) {
+      if (now - log[i] < 1000) log[writeIdx++] = log[i];
+    }
+    log.length = writeIdx;
+    if (log.length > 10 || (k.behaviorQueue && k.behaviorQueue.length > 10)) {
+      // Overwhelmed! Hard override: flush everything, force a long protected walk.
+      // scaredFrames acts as a shield — while >0, tick() skips behavior timers
+      // and social interactions won't target this cat, so nothing can re-trigger.
+      log.length = 0;
       k.behaviorQueue = [];
+      k.interaction = undefined;
+      k.interactionFrames = 0;
+      delete k.el.dataset.interaction;
       k.behavior = 'walk';
       delete k.el.dataset.behavior;
       k.el.dataset.tail = k.origTail;
-      k.baseVx = (Math.random() > 0.5 ? 1 : -1) * rand(3, 5);
+      const escapeDir = (Math.random() > 0.5 ? 1 : -1);
+      k.baseVx = escapeDir * rand(3, 5);
       k.savedVx = k.baseVx;
-      k.vx = k.baseVx;
+      k.vx = escapeDir * rand(4, 6);
       k.vy -= rand(2, 4);
+      // Long scared cooldown — no behavior changes allowed during this
+      k.scaredFrames = 300; // ~5 seconds at 60fps
+      k.scaredDir = escapeDir as -1 | 1;
       showPopup(k.el, '🙀');
       return;
     }
@@ -1660,7 +1680,21 @@
   const RECEPTIVE: Behavior[] = ['walk', 'sit', 'groom'];
   const SHOO_THRESHOLD = 4; // clicks needed to shoo a cat away
 
+  const _lastPopupTime = new WeakMap<HTMLElement, number>();
+  const POPUP_THROTTLE_MS = 400; // min ms between popups per element
+  const MAX_POPUPS_PER_EL = 3;   // max simultaneous popup elements
+
   function showPopup(el: HTMLElement, icon: string) {
+    // Throttle: don't spam DOM elements on the same cat
+    const now = performance.now();
+    const last = _lastPopupTime.get(el) || 0;
+    if (now - last < POPUP_THROTTLE_MS) return;
+    _lastPopupTime.set(el, now);
+
+    // Cap simultaneous popups per element
+    const existing = el.querySelectorAll('.tama-care-popup');
+    if (existing.length >= MAX_POPUPS_PER_EL) return;
+
     const popup = document.createElement('div');
     popup.className = 'tama-care-popup';
     popup.textContent = icon;
@@ -1860,6 +1894,7 @@
 
   function startScaredRun(k: KState, dir: number, frames = 150, speed = 4.2) {
     const scaredDir = (dir >= 0 ? 1 : -1) as -1 | 1;
+    k.behaviorQueue = []; // flush queue — scared cats don't follow chains
     k.scaredFrames = Math.max(k.scaredFrames || 0, frames);
     k.scaredDir = scaredDir;
     if (k.behavior !== 'walk') exitBehavior(k);
@@ -2085,10 +2120,17 @@
     const cat = cats.find(k => k.tamagotchiId === catId);
     if (!cat) return;
 
+    // Cat-sourced grooms: the social grooming code already set up the scene
+    // (groomee sitting, groomer stalking→grooming). Don't disrupt it.
+    if (sourceType === 'cat') return;
+
     if (sourceType === 'visitor') {
       if (action === 'pet') bumpTrust(catId, 1);
       else if (action === 'feed' || action === 'play' || action === 'groom') bumpTrust(catId, 2);
     }
+
+    // Don't yank a scared/overwhelmed cat into a new behavior
+    if (cat.scaredFrames && cat.scaredFrames > 0) return;
 
     let behavior = CARE_BEHAVIORS[action];
     if (action === 'play' && variant === 'feather') behavior = 'pounce';
@@ -2996,6 +3038,7 @@
 
   function tickSocialBehavior() {
     socialTimer++;
+    let groomedThisTick = false; // limit to one grooming event per tick
 
     const tamaCats = cats.filter(k => k.tamagotchiId);
     if (tamaCats.length < 2) return;
@@ -3126,7 +3169,10 @@
         }
 
         // ── Social grooming: bonded cats groom each other ──
-        if (dist < 80 && affinity > 50 && socialTimer % SOCIAL_GROOM_INTERVAL === 0) {
+        // Skip if either cat is scared/overwhelmed, already grooming, or being groomed
+        const aBusy = !!(a.scaredFrames && a.scaredFrames > 0) || a.behavior === 'groom' || a.behavior === 'stalk' || a.interaction === 'groomed';
+        const bBusy = !!(b.scaredFrames && b.scaredFrames > 0) || b.behavior === 'groom' || b.behavior === 'stalk' || b.interaction === 'groomed';
+        if (dist < 80 && affinity > 50 && socialTimer % SOCIAL_GROOM_INTERVAL === 0 && !aBusy && !bBusy && !groomedThisTick) {
           const state = tamagotchi.getState();
           const aData = state?.cats.find(c => c.id === a.tamagotchiId);
           const bData = state?.cats.find(c => c.id === b.tamagotchiId);
@@ -3145,6 +3191,7 @@
           }
 
           if (groomer && groomee && groomeeId) {
+            groomedThisTick = true; // only one grooming event per social tick
             // Groomer: approach → groom (facing groomee)
             const groomDx = groomee.x - groomer.x;
             groomer.el.dataset.facingRight = groomDx > 0 ? '1' : '';
