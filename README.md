@@ -1,5 +1,7 @@
 # Cattery Website
 
+<img src="rec.webp" width="640" />
+
 Dutch cattery website built with Astro (static site generation) and Directus CMS.
 
 ## Stack
